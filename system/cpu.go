@@ -139,8 +139,7 @@ func getCpuInfo(ret *model.SystemInfo, cpuType string) (*model.SystemInfo, error
 			}
 		}
 	}
-	// 使用 sysctl 获取信息 - 特化适配 freebsd openbsd 系统
-
+	// TODO 使用 sysctl 获取信息 - 特化适配 freebsd openbsd 系统
 	// 使用 /proc/device-tree 获取信息 - 特化适配嵌入式系统
 	deviceTreeContent, err := os.ReadFile("/proc/device-tree")
 	if err == nil {

@@ -2,6 +2,7 @@ package system
 
 import (
 	"fmt"
+	"runtime"
 	"strconv"
 
 	"github.com/oneclickvirt/basics/system/model"
@@ -16,8 +17,8 @@ var (
 	cpuType string
 )
 
-// GetHost 获取主机硬件信息
-func GetHost() *model.SystemInfo {
+// GetSystemInfo 获取主机硬件信息
+func GetSystemInfo() *model.SystemInfo {
 	var ret = &model.SystemInfo{}
 	// 系统信息查询
 	cpuType, ret.Uptime, ret.Platform, ret.Kernel, ret.Arch, ret.VmType, ret.NatType, ret.TimeZone, _ = getHostInfo()
@@ -40,14 +41,16 @@ func GetHost() *model.SystemInfo {
 	return ret
 }
 
-func GetSystemInfo() {
-	ret := GetHost()
+func CheckSystemInfo() {
+	ret := GetSystemInfo()
 	fmt.Println("Cpu Model          :", ret.CpuModel)
 	fmt.Println("Cpu Cores          :", ret.CpuCores)
 	if ret.CpuCache != "" {
 		fmt.Println("Cpu Cache          :", ret.CpuCache)
 	}
-	fmt.Println("AES-NI             :", ret.CpuAesNi)
+	if runtime.GOOS != "windows" && runtime.GOOS != "macos" {
+		fmt.Println("AES-NI             :", ret.CpuAesNi)
+	}
 	fmt.Println("VM-x/AMD-V/Hyper-V :", ret.CpuVAH)
 	fmt.Println("RAM                :", ret.MemoryUsage+" / "+ret.MemoryTotal)
 	if ret.VirtioBalloon != "" {

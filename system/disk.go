@@ -1,13 +1,15 @@
 package system
 
 import (
-	"github.com/shirou/gopsutil/disk"
 	"os/exec"
 	"runtime"
 	"strconv"
 	"strings"
+
+	"github.com/shirou/gopsutil/disk"
 )
 
+// getDiskInfo 获取硬盘信息
 func getDiskInfo() (string, string, string, error) {
 	var diskTotalStr, diskUsageStr, bootPath string
 	tempDiskTotal, tempDiskUsage := getDiskTotalAndUsed()
@@ -24,21 +26,44 @@ func getDiskInfo() (string, string, string, error) {
 	} else {
 		diskUsageStr = strconv.FormatFloat(diskUsageGB, 'f', 2, 64) + " GB"
 	}
-	parts, err := disk.Partitions(true)
-	if err != nil {
-		bootPath = ""
+	if runtime.GOOS == "windows" {
+		parts, err := disk.Partitions(true)
+		if err != nil {
+			bootPath = ""
+		} else {
+			for _, part := range parts {
+				if part.Fstype == "tmpfs" {
+					continue
+				}
+				usageStat, err := disk.Usage(part.Mountpoint)
+				if err != nil {
+					continue
+				}
+				if usageStat.Total > 0 {
+					bootPath = part.Mountpoint
+					break
+				}
+			}
+		}
 	} else {
-		for _, part := range parts {
-			if part.Fstype == "tmpfs" {
-				continue
-			}
-			usageStat, err := disk.Usage(part.Mountpoint)
-			if err != nil {
-				continue
-			}
-			if usageStat.Total > 0 {
-				bootPath = part.Mountpoint
-				break
+		cmd := exec.Command("df", "-x", "tmpfs", "/")
+		output, err := cmd.Output()
+		if err == nil {
+			awkCmd := exec.Command("awk", "NR>1")
+			awkCmd.Stdin = strings.NewReader(string(output))
+			awkOutput, err := awkCmd.Output()
+			if err == nil {
+				sedCmd := exec.Command("sed", ":a;N;s/\\n//g;ta")
+				sedCmd.Stdin = strings.NewReader(string(awkOutput))
+				sedOutput, err := sedCmd.Output()
+				if err != nil {
+					finalAwkCmd := exec.Command("awk", "{print $1}")
+					finalAwkCmd.Stdin = strings.NewReader(string(sedOutput))
+					finalOutput, err := finalAwkCmd.Output()
+					if err != nil {
+						bootPath = string(finalOutput)
+					}
+				}
 			}
 		}
 	}

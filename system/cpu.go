@@ -47,7 +47,7 @@ func getCpuInfo(ret *model.SystemInfo, cpuType string) (*model.SystemInfo, error
 			if len(ret.CpuModel) < len(ci[i].ModelName) {
 				ret.CpuModel = ci[i].ModelName + fmt.Sprintf(" %d %s Core", len(ci), cpuType) + " @ " +
 					strconv.FormatFloat(ci[i].Mhz, 'f', 2, 64) + " MHz"
-				ret.CpuCores = fmt.Sprintf("%d vCPU(s)", int(ci[i].Cores))
+				ret.CpuCores = fmt.Sprintf("%d vCPU(s)", runtime.NumCPU())
 				if ci[i].CacheSize != 0 { // Windows查不到CPU的三缓
 					ret.CpuCache = string(ci[i].CacheSize)
 				}

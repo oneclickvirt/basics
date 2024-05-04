@@ -58,7 +58,7 @@ func convertBytes(bytes int64) (string, int64) {
 func getCpuInfo(ret *model.SystemInfo, cpuType string) (*model.SystemInfo, error) {
 	var aesFeature, virtFeature, hypervFeature string
 	var st bool
-	ret.CpuCores = fmt.Sprintf("%d vCPU(s)", runtime.NumCPU())
+	ret.CpuCores = fmt.Sprintf("%d %s CPU(s)", runtime.NumCPU(), cpuType)
 	if runtime.GOOS == "windows" {
 		ci, err := cpu.Info()
 		if err != nil {
@@ -106,12 +106,12 @@ func getCpuInfo(ret *model.SystemInfo, cpuType string) (*model.SystemInfo, error
 			bytes4, err4 := strconv.ParseInt(L2cache, 10, 64)
 			if err4 == nil {
 				unit, size := convertBytes(bytes4)
-				L1cache = fmt.Sprintf("L2: %d %s", size, unit)
+				L2cache = fmt.Sprintf("L2: %d %s", size, unit)
 			}
 			bytes5, err5 := strconv.ParseInt(L3cache, 10, 64)
 			if err5 == nil {
 				unit, size := convertBytes(bytes5)
-				L1cache = fmt.Sprintf("L3: %d %s", size, unit)
+				L3cache = fmt.Sprintf("L3: %d %s", size, unit)
 			}
 			if err1 == nil && err2 == nil && err4 == nil && err5 == nil {
 				ret.CpuCache = L1cache + " / " + L2cache + " / " + L3cache

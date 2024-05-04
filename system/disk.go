@@ -53,8 +53,32 @@ func getDiskInfo() (string, string, string, error) {
 			lines := strings.Split(string(output), "\n")
 			if len(lines) >= 2 {
 				fields := strings.Split(strings.TrimSpace(lines[1]), " ")
-				if len(fields) > 0 && fields[0] != "" {
-					bootPath = fields[0]
+				var nonEmptyFields []string
+				for _, field := range fields {
+					if field != "" {
+						nonEmptyFields = append(nonEmptyFields, field)
+					}
+				}
+				if len(nonEmptyFields) > 0 && nonEmptyFields[0] != "" {
+					bootPath = nonEmptyFields[0]
+					if strings.Contains(bootPath, "overlay") && len(nonEmptyFields) >= 5 {
+						tpDiskTotal, err1 := strconv.Atoi(nonEmptyFields[1])
+						tpDiskUsage, err2 := strconv.Atoi(nonEmptyFields[2])
+						if err1 == nil && err2 == nil {
+							diskTotalGB = float64(tpDiskTotal) / (1024 * 1024)
+							diskUsageGB = float64(tpDiskUsage) / (1024 * 1024)
+							if diskTotalGB < 1 {
+								diskTotalStr = strconv.FormatFloat(diskTotalGB*1024, 'f', 2, 64) + " MB" + " [" + nonEmptyFields[4] + "]"
+							} else {
+								diskTotalStr = strconv.FormatFloat(diskTotalGB, 'f', 2, 64) + " GB" + " [" + nonEmptyFields[4] + "]"
+							}
+							if diskUsageGB < 1 {
+								diskUsageStr = strconv.FormatFloat(diskUsageGB*1024, 'f', 2, 64) + " MB"
+							} else {
+								diskUsageStr = strconv.FormatFloat(diskUsageGB, 'f', 2, 64) + " GB"
+							}
+						}
+					}
 				}
 			}
 		}

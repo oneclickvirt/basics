@@ -46,23 +46,17 @@ func getDiskInfo() (string, string, string, error) {
 			}
 		}
 	} else {
+		// df -x tmpfs / | awk "NR>1" | sed ":a;N;s/\\n//g;ta" | awk '{print $1}'
 		cmd := exec.Command("df", "-x", "tmpfs", "/")
 		output, err := cmd.Output()
 		if err == nil {
-			awkCmd := exec.Command("awk", "NR>1")
-			awkCmd.Stdin = strings.NewReader(string(output))
-			awkOutput, err := awkCmd.Output()
-			if err == nil {
-				sedCmd := exec.Command("sed", ":a;N;s/\\n//g;ta")
-				sedCmd.Stdin = strings.NewReader(string(awkOutput))
-				sedOutput, err := sedCmd.Output()
-				if err != nil {
-					finalAwkCmd := exec.Command("awk", "{print $1}")
-					finalAwkCmd.Stdin = strings.NewReader(string(sedOutput))
-					finalOutput, err := finalAwkCmd.Output()
-					if err != nil {
-						bootPath = string(finalOutput)
-					}
+			// 解析输出
+			lines := strings.Split(string(output), "\n")
+			if len(lines) >= 2 {
+				// 解析第二行的值
+				fields := strings.Fields(lines[1])
+				if len(fields) < 6 {
+					bootPath = fields[0]
 				}
 			}
 		}

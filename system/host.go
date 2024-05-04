@@ -3,11 +3,12 @@ package system
 import (
 	"context"
 	"fmt"
+	"runtime"
+	"time"
+
 	"github.com/libp2p/go-nat"
 	"github.com/oneclickvirt/basics/system/utils"
 	"github.com/shirou/gopsutil/host"
-	"runtime"
-	"time"
 )
 
 func getHostInfo() (string, string, string, string, string, string, string, string, error) {
@@ -22,12 +23,7 @@ func getHostInfo() (string, string, string, string, string, string, string, stri
 		} else {
 			cpuType = "Physical"
 		}
-		if runtime.GOOS == "linux" {
-			Platform = hi.Platform
-			Kernal = hi.PlatformVersion
-		} else {
-			Platform = hi.Platform + " " + hi.PlatformVersion
-		}
+		Platform = hi.Platform + " " + hi.PlatformVersion
 		Arch = hi.KernelArch
 		// 查询虚拟化类型
 		VmType = hi.VirtualizationSystem

@@ -84,13 +84,13 @@ func getCpuInfo(ret *model.SystemInfo, cpuType string) (*model.SystemInfo, error
 					if strings.Contains(fields[0], "Model name") {
 						ret.CpuModel = strings.TrimSpace(strings.Join(fields[1:], " "))
 					} else if strings.Contains(fields[0], "L1d cache") {
-						L1dcache = strings.Join(fields[1:], " ")
+						L1dcache = strings.TrimSpace(strings.Join(fields[1:], " "))
 					} else if strings.Contains(fields[0], "L1i cache") {
-						L1icache = strings.Join(fields[1:], " ")
+						L1icache = strings.TrimSpace(strings.Join(fields[1:], " "))
 					} else if strings.Contains(fields[0], "L2 cache") {
-						L2cache = strings.Join(fields[1:], " ")
+						L2cache = strings.TrimSpace(strings.Join(fields[1:], " "))
 					} else if strings.Contains(fields[0], "L3 cache") {
-						L3cache = strings.Join(fields[1:], " ")
+						L3cache = strings.TrimSpace(strings.Join(fields[1:], " "))
 					}
 				}
 			}

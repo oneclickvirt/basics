@@ -50,12 +50,10 @@ func getDiskInfo() (string, string, string, error) {
 		cmd := exec.Command("df", "-x", "tmpfs", "/")
 		output, err := cmd.Output()
 		if err == nil {
-			// 解析输出
 			lines := strings.Split(string(output), "\n")
 			if len(lines) >= 2 {
-				// 解析第二行的值
-				fields := strings.Fields(lines[1])
-				if len(fields) < 6 {
+				fields := strings.Split(strings.TrimSpace(lines[1]), " ")
+				if len(fields) > 0 && fields[0] != "" {
 					bootPath = fields[0]
 				}
 			}

@@ -76,8 +76,3 @@ func GetSystemInfo() {
 		fmt.Println("Tcp Accelerate     :", ret.TcpAccelerationMethod)
 	}
 }
-
-// TODO
-// NAT Type 在 linux 上查不到
-// Boot Path 在 linux 上查询失败
-// Cpu Cache 在 linux 上输出有问题，不能直接转换 string

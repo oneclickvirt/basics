@@ -3,15 +3,15 @@ package system
 import (
 	"context"
 	"fmt"
+	"github.com/libp2p/go-nat"
+	"github.com/oneclickvirt/basics/system/utils"
+	"github.com/shirou/gopsutil/host"
 	"runtime"
 	"time"
-
-	"github.com/libp2p/go-nat"
-	"github.com/shirou/gopsutil/host"
 )
 
-func getHostInfo() (string, string, string, string, string, string, string, error) {
-	var Platform, Kernal, Arch, VmType, NatType string
+func getHostInfo() (string, string, string, string, string, string, string, string, error) {
+	var Platform, Kernal, Arch, VmType, NatType, CurrentTimeZone string
 	var cachedBootTime time.Time
 	hi, err := host.Info()
 	if err != nil {
@@ -41,6 +41,10 @@ func getHostInfo() (string, string, string, string, string, string, string, erro
 	uptimeDuration -= time.Duration(hours) * time.Hour
 	minutes := int(uptimeDuration.Minutes())
 	uptimeFormatted := fmt.Sprintf("%d days, %02d hours, %02d minutes", days, hours, minutes)
+	// windows 查询虚拟化类型 使用 wmic
+	if VmType == "" && runtime.GOOS == "windows" {
+		VmType = utils.CheckVMTypeWithWIMC()
+	}
 	// 查询NAT类型
 	ctx := context.Background()
 	gateway, err := nat.DiscoverGateway(ctx)
@@ -48,5 +52,7 @@ func getHostInfo() (string, string, string, string, string, string, string, erro
 		natType := gateway.Type()
 		NatType = natType
 	}
-	return cpuType, uptimeFormatted, Platform, Kernal, Arch, VmType, NatType, nil
+	// 获取当前系统的本地时区
+	CurrentTimeZone = utils.GetTimeZone()
+	return cpuType, uptimeFormatted, Platform, Kernal, Arch, VmType, NatType, CurrentTimeZone, nil
 }

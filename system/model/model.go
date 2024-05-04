@@ -30,6 +30,7 @@ type SystemInfo struct {
 	Kernel                string // 系统内核
 	Arch                  string //
 	Uptime                string // 正常运行时间
+	TimeZone              string // 系统时区
 	VmType                string // 虚拟化架构
 	Load                  string // load1 load2 load3
 	NatType               string // stun
@@ -49,4 +50,8 @@ type Win32_ComputerSystem struct {
 
 type Win32_OperatingSystem struct {
 	BuildType string
+}
+
+type Win32_TimeZone struct {
+	Caption string
 }

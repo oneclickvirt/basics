@@ -3,6 +3,7 @@ package system
 import (
 	"fmt"
 	"github.com/oneclickvirt/basics/system/model"
+	"github.com/oneclickvirt/basics/system/utils"
 	"strconv"
 )
 
@@ -18,7 +19,7 @@ var (
 func GetHost() *model.SystemInfo {
 	var ret = &model.SystemInfo{}
 	// 系统信息查询
-	cpuType, ret.Uptime, ret.Platform, ret.Kernel, ret.Arch, ret.VmType, ret.NatType, _ = getHostInfo()
+	cpuType, ret.Uptime, ret.Platform, ret.Kernel, ret.Arch, ret.VmType, ret.NatType, ret.TimeZone, _ = getHostInfo()
 	// CPU信息查询
 	ret, _ = getCpuInfo(ret, cpuType)
 	// 硬盘信息查询
@@ -34,7 +35,7 @@ func GetHost() *model.SystemInfo {
 		strconv.FormatFloat(load5, 'f', 2, 64) + " / " +
 		strconv.FormatFloat(load15, 'f', 2, 64)
 	// 获取TCP控制算法
-	ret.TcpAccelerationMethod = getTCPAccelerateStatus()
+	ret.TcpAccelerationMethod = utils.GetTCPAccelerateStatus()
 	return ret
 }
 
@@ -66,6 +67,7 @@ func GetSystemInfo() {
 		fmt.Println("Kernel             :", ret.Kernel)
 	}
 	fmt.Println("Uptime             :", ret.Uptime)
+	fmt.Println("Current Time Zone  :", ret.TimeZone)
 	fmt.Println("Load               :", ret.Load)
 	fmt.Println("VM Type            :", ret.VmType)
 	fmt.Println("NAT Type           :", ret.NatType)
@@ -73,3 +75,8 @@ func GetSystemInfo() {
 		fmt.Println("Tcp Accelerate     :", ret.TcpAccelerationMethod)
 	}
 }
+
+// TODO
+// NAT Type 在 linux 上查不到
+// Boot Path 在 linux 上查询失败
+// Cpu Cache 在 linux 上输出有问题，不能直接转换 string

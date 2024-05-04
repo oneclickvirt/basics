@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/oneclickvirt/basics/system/model"
+	"github.com/oneclickvirt/basics/system/utils"
 	"github.com/shirou/gopsutil/cpu"
 )
 
@@ -26,7 +27,9 @@ func checkCPUFeatureLinux(filename string, feature string) (string, bool) {
 }
 
 func checkCPUFeature(filename string, feature string) (string, bool) {
-	if runtime.GOOS == "linux" {
+	if runtime.GOOS == "windows" {
+		return utils.CheckCPUFeatureWindows(filename, feature)
+	} else if runtime.GOOS == "linux" {
 		return checkCPUFeatureLinux(filename, feature)
 	}
 	return "Unsupported OS", false
@@ -64,6 +67,10 @@ func getCpuInfo(ret *model.SystemInfo, cpuType string) (*model.SystemInfo, error
 	ret.CpuVAH, st = checkCPUFeature(virtFeature, "vmx")
 	if !st {
 		ret.CpuVAH, _ = checkCPUFeature(hypervFeature, "hypervisor")
+	}
+	// 查询CPU的三缓
+	if runtime.GOOS == "windows" {
+		ret.CpuCache = utils.GetCpuCache()
 	}
 	return ret, nil
 }

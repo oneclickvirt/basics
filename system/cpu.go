@@ -43,7 +43,6 @@ func convertBytes(bytes int64) (string, int64) {
 		MB = 1024 * KB
 		GB = 1024 * MB
 	)
-
 	switch {
 	case bytes >= GB:
 		return "GB", bytes / GB
@@ -59,6 +58,7 @@ func convertBytes(bytes int64) (string, int64) {
 func getCpuInfo(ret *model.SystemInfo, cpuType string) (*model.SystemInfo, error) {
 	var aesFeature, virtFeature, hypervFeature string
 	var st bool
+	ret.CpuCores = fmt.Sprintf("%d vCPU(s)", runtime.NumCPU())
 	if runtime.GOOS == "windows" {
 		ci, err := cpu.Info()
 		if err != nil {
@@ -67,7 +67,6 @@ func getCpuInfo(ret *model.SystemInfo, cpuType string) (*model.SystemInfo, error
 			for i := 0; i < len(ci); i++ {
 				if len(ret.CpuModel) < len(ci[i].ModelName) {
 					ret.CpuModel = strings.TrimSpace(ci[i].ModelName)
-					ret.CpuCores = fmt.Sprintf("%d vCPU(s)", runtime.NumCPU())
 				}
 			}
 		}

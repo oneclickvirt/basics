@@ -46,6 +46,7 @@ func getDiskInfo() (string, string, string, error) {
 			}
 		}
 	} else {
+		// 特殊处理 docker、lxc 等虚拟化使用 overlay 挂载的情况
 		// df -x tmpfs / | awk "NR>1" | sed ":a;N;s/\\n//g;ta" | awk '{print $1}'
 		cmd := exec.Command("df", "-x", "tmpfs", "/")
 		output, err := cmd.Output()

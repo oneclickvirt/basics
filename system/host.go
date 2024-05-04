@@ -27,6 +27,7 @@ func getHostInfo() (string, string, string, string, string, string, string, stri
 		Arch = hi.KernelArch
 		// 查询虚拟化类型
 		VmType = hi.VirtualizationSystem
+		fmt.Println("VmType:", VmType)
 		// 系统运行时长查询
 		cachedBootTime = time.Unix(int64(hi.BootTime), 0)
 	}

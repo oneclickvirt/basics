@@ -122,7 +122,7 @@ func getHostInfo() (string, string, string, string, string, string, string, stri
 		natType := gateway.Type()
 		NatType = natType
 	} else {
-		fmt.Println(err.Error())
+		NatType = getNatType()
 	}
 	// 获取当前系统的本地时区
 	CurrentTimeZone = utils.GetTimeZone()

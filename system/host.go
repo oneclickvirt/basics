@@ -101,7 +101,7 @@ func getHostInfo() (string, string, string, string, string, string, string, stri
 		} else {
 			VmType = hi.VirtualizationSystem
 		}
-		// 系统运行时长查询
+		// 系统运行时长查询 /proc/uptime
 		cachedBootTime = time.Unix(int64(hi.BootTime), 0)
 	}
 	uptimeDuration := time.Since(cachedBootTime)

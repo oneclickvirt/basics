@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/libp2p/go-nat"
@@ -17,7 +18,7 @@ func getVmTypeFromSDV(path string) string {
 	cmd := exec.Command(fmt.Sprintf("%s/systemd-detect-virt", path))
 	output, err := cmd.Output()
 	if err == nil {
-		switch string(output) {
+		switch strings.TrimSpace(strings.ReplaceAll(string(output), "\n", "")) {
 		case "kvm":
 			return "KVM"
 		case "xen":
@@ -115,6 +116,8 @@ func getHostInfo() (string, string, string, string, string, string, string, stri
 	if err == nil {
 		natType := gateway.Type()
 		NatType = natType
+	} else {
+		fmt.Println(err.Error())
 	}
 	// 获取当前系统的本地时区
 	CurrentTimeZone = utils.GetTimeZone()

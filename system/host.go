@@ -65,7 +65,7 @@ func getHostInfo() (string, string, string, string, string, string, string, stri
 	var cachedBootTime time.Time
 	hi, err := host.Info()
 	if err != nil {
-		println("host.Info error:", err)
+		fmt.Println("host.Info error:", err)
 	} else {
 		if hi.VirtualizationRole == "guest" {
 			cpuType = "Virtual"
@@ -74,8 +74,13 @@ func getHostInfo() (string, string, string, string, string, string, string, stri
 		}
 		Platform = hi.Platform + " " + hi.PlatformVersion
 		Arch = hi.KernelArch
-		// 查询虚拟化类型
+		// 查询虚拟化类型和内核
 		if runtime.GOOS != "windows" {
+			cmd := exec.Command("uname", "-r")
+			output, err := cmd.Output()
+			if err == nil {
+				Kernal = strings.TrimSpace(strings.ReplaceAll(string(output), "\n", ""))
+			}
 			path, exit := utils.GetPATH("systemd-detect-virt")
 			if exit {
 				VmType = getVmTypeFromSDV(path)

@@ -130,3 +130,8 @@ func GetTimeZone() string {
 		return ""
 	}
 }
+
+// GetPATH 检测本机的PATH环境是否含有对应的命令
+func GetPATH(key string) (string, bool) {
+	return "", false
+}

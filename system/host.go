@@ -3,6 +3,8 @@ package system
 import (
 	"context"
 	"fmt"
+	"os"
+	"os/exec"
 	"runtime"
 	"time"
 
@@ -10,6 +12,52 @@ import (
 	"github.com/oneclickvirt/basics/system/utils"
 	"github.com/shirou/gopsutil/host"
 )
+
+func getVmTypeFromSDV(path string) string {
+	cmd := exec.Command(fmt.Sprintf("%s/systemd-detect-virt", path))
+	output, err := cmd.Output()
+	if err == nil {
+		switch string(output) {
+		case "kvm":
+			return "KVM"
+		case "xen":
+			return "Xen Hypervisor"
+		case "microsoft":
+			return "Microsoft Hyper-V"
+		case "vmware":
+			return "VMware"
+		case "oracle":
+			return "Oracle VirtualBox"
+		case "parallels":
+			return "Parallels"
+		case "qemu":
+			return "QEMU"
+		case "amazon":
+			return "Amazon Virtualization"
+		case "docker":
+			return "Docker"
+		case "openvz":
+			return "OpenVZ (Virutozzo)"
+		case "lxc":
+			return "LXC"
+		case "lxc-libvirt":
+			return "LXC (Based on libvirt)"
+		case "uml":
+			return "User-mode Linux"
+		case "systemd-nspawn":
+			return "Systemd nspawn"
+		case "bochs":
+			return "BOCHS"
+		case "rkt":
+			return "RKT"
+		case "zvm":
+			return "S390 Z/VM"
+		case "none":
+			return "Dedicated"
+		}
+	}
+	return ""
+}
 
 func getHostInfo() (string, string, string, string, string, string, string, string, error) {
 	var Platform, Kernal, Arch, VmType, NatType, CurrentTimeZone string
@@ -26,7 +74,27 @@ func getHostInfo() (string, string, string, string, string, string, string, stri
 		Platform = hi.Platform + " " + hi.PlatformVersion
 		Arch = hi.KernelArch
 		// 查询虚拟化类型
-		VmType = hi.VirtualizationSystem
+		if runtime.GOOS != "windows" {
+			path, exit := utils.GetPATH("systemd-detect-virt")
+			if exit {
+				VmType = getVmTypeFromSDV(path)
+			}
+			if VmType == "" {
+				_, err := os.Stat("/.dockerenv")
+				if os.IsExist(err) {
+					VmType = "Docker"
+				}
+				_, err = os.Stat("/dev/lxss")
+				if os.IsExist(err) {
+					VmType = "Windows Subsystem for Linux"
+				}
+				if VmType == "" {
+					VmType = "Dedicated (No visible signage)"
+				}
+			}
+		} else {
+			VmType = hi.VirtualizationSystem
+		}
 		// 系统运行时长查询
 		cachedBootTime = time.Unix(int64(hi.BootTime), 0)
 	}

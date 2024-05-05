@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bytes"
+	"os"
 	"os/exec"
 	"strings"
 )
@@ -68,3 +69,30 @@ func GetTimeZone() string {
 	}
 	return CurrentTimeZone
 }
+
+// GetPATH 检测本机的PATH环境是否含有对应的命令
+func GetPATH(key string) (string,bool) {
+	// 指定要搜索的目录列表
+	dirs := []string{"/usr/local/bin", "/usr/local/sbin", "/usr/bin", "/usr/sbin", "/sbin", "/bin", "/snap/bin"}
+	// 循环遍历每个目录
+	for _, dir := range dirs {
+		// 检查目录是否存在
+		_, err := os.Stat(dir)
+		if os.IsNotExist(err) {
+			continue
+		}
+		cmd := exec.Command("ls", dir)
+		output, err := cmd.Output()
+		if err != nil {
+			continue
+		}
+		files := strings.Split(string(output), "\n")
+		for _, file := range files {
+			if file == key {
+				return dir, true
+			}
+		}
+	}
+	return "", false
+}
+

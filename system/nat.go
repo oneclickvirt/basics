@@ -69,35 +69,28 @@ func getNatType() string {
 
 	if err := mappingTests(*addrStrPtr); err != nil {
 		NatMappingBehavior = "inconclusive" // my changes
-		log.Warn("NAT mapping behavior: inconclusive")
+		// log.Warn("NAT mapping behavior: inconclusive")
 	}
 	if err := filteringTests(*addrStrPtr); err != nil {
 		NatFilteringBehavior = "inconclusive" // my changes
-		log.Warn("NAT filtering behavior: inconclusive")
+		// log.Warn("NAT filtering behavior: inconclusive")
 	}
 	// my changes start
 	if NatMappingBehavior != "" && NatFilteringBehavior != "" {
 		if NatMappingBehavior == "inconclusive" || NatFilteringBehavior == "inconclusive" {
-			fmt.Println("NAT Type: inconclusive")
 			return "inconclusive"
 		} else if NatMappingBehavior == "endpoint independent" && NatFilteringBehavior == "endpoint independent" {
-			fmt.Println("NAT Type: Full Cone")
 			return "Full Cone"
 		} else if NatMappingBehavior == "endpoint independent" && NatFilteringBehavior == "address dependent" {
-			fmt.Println("NAT Type: Restricted Cone")
 			return "Restricted Cone"
 		} else if NatMappingBehavior == "endpoint independent" && NatFilteringBehavior == "address and port dependent" {
-			fmt.Println("NAT Type: Port Restricted Cone")
 			return "Port Restricted Cone"
 		} else if NatMappingBehavior == "address and port dependent" && NatFilteringBehavior == "address and port dependent" {
-			fmt.Println("NAT Type: Symmetric")
 			return "Symmetric"
 		} else {
-			fmt.Printf("NAT Type: %v[NatMappingBehavior] %v[NatFilteringBehavior]\n", NatMappingBehavior, NatFilteringBehavior)
 			return fmt.Sprintf("%v[NatMappingBehavior] %v[NatFilteringBehavior]", NatMappingBehavior, NatFilteringBehavior)
 		}
 	} else {
-		fmt.Println("NAT Type: inconclusive")
 		return "inconclusive"
 	}
 	// my changes end
@@ -107,7 +100,7 @@ func getNatType() string {
 func mappingTests(addrStr string) error {
 	mapTestConn, err := connect(addrStr)
 	if err != nil {
-		log.Warnf("Error creating STUN connection: %s", err)
+		// log.Warnf("Error creating STUN connection: %s", err)
 		return err
 	}
 
@@ -137,7 +130,7 @@ func mappingTests(addrStr string) error {
 	// Assert mapping behavior
 	if resps1.xorAddr.String() == mapTestConn.LocalAddr.String() {
 		NatMappingBehavior = "endpoint independent (no NAT)" // my changes
-		log.Warn("=> NAT mapping behavior: endpoint independent (no NAT)")
+		// log.Warn("=> NAT mapping behavior: endpoint independent (no NAT)")
 		return nil
 	}
 
@@ -155,7 +148,7 @@ func mappingTests(addrStr string) error {
 	log.Infof("Received XOR-MAPPED-ADDRESS: %v", resps2.xorAddr)
 	if resps2.xorAddr.String() == resps1.xorAddr.String() {
 		NatMappingBehavior = "endpoint independent" // my changes
-		log.Warn("=> NAT mapping behavior: endpoint independent")
+		// log.Warn("=> NAT mapping behavior: endpoint independent")
 		return nil
 	}
 
@@ -171,10 +164,10 @@ func mappingTests(addrStr string) error {
 	log.Infof("Received XOR-MAPPED-ADDRESS: %v", resps3.xorAddr)
 	if resps3.xorAddr.String() == resps2.xorAddr.String() {
 		NatMappingBehavior = "address dependent" // my changes
-		log.Warn("=> NAT mapping behavior: address dependent")
+		// log.Warn("=> NAT mapping behavior: address dependent")
 	} else {
 		NatMappingBehavior = "address and port dependent" // my changes
-		log.Warn("=> NAT mapping behavior: address and port dependent")
+		// log.Warn("=> NAT mapping behavior: address and port dependent")
 	}
 	return mapTestConn.Close()
 }
@@ -183,7 +176,7 @@ func mappingTests(addrStr string) error {
 func filteringTests(addrStr string) error {
 	mapTestConn, err := connect(addrStr)
 	if err != nil {
-		log.Warnf("Error creating STUN connection: %s", err)
+		// log.Warnf("Error creating STUN connection: %s", err)
 		return err
 	}
 
@@ -197,7 +190,7 @@ func filteringTests(addrStr string) error {
 	}
 	resps := parse(resp)
 	if resps.xorAddr == nil || resps.otherAddr == nil {
-		log.Warn("Error: NAT discovery feature not supported by this server")
+		// log.Warn("Error: NAT discovery feature not supported by this server")
 		return errNoOtherAddress
 	}
 	addr, err := net.ResolveUDPAddr("udp4", resps.otherAddr.String())
@@ -216,7 +209,7 @@ func filteringTests(addrStr string) error {
 	if err == nil {
 		parse(resp)                                   // just to print out the resp
 		NatFilteringBehavior = "endpoint independent" // my changes
-		log.Warn("=> NAT filtering behavior: endpoint independent")
+		// log.Warn("=> NAT filtering behavior: endpoint independent")
 		return nil
 	} else if !errors.Is(err, errTimedOut) {
 		return err // something else went wrong
@@ -231,10 +224,10 @@ func filteringTests(addrStr string) error {
 	if err == nil {
 		parse(resp)                                // just to print out the resp
 		NatFilteringBehavior = "address dependent" // my changes
-		log.Warn("=> NAT filtering behavior: address dependent")
+		// log.Warn("=> NAT filtering behavior: address dependent")
 	} else if errors.Is(err, errTimedOut) {
 		NatFilteringBehavior = "address and port dependent" // my changes
-		log.Warn("=> NAT filtering behavior: address and port dependent")
+		// log.Warn("=> NAT filtering behavior: address and port dependent")
 	}
 
 	return mapTestConn.Close()
@@ -296,7 +289,7 @@ func connect(addrStr string) (*stunServerConn, error) {
 	log.Infof("Connecting to STUN server: %s", addrStr)
 	addr, err := net.ResolveUDPAddr("udp4", addrStr)
 	if err != nil {
-		log.Warnf("Error resolving address: %s", err)
+		// log.Warnf("Error resolving address: %s", err)
 		return nil, err
 	}
 
@@ -327,7 +320,7 @@ func (c *stunServerConn) roundTrip(msg *stun.Message, addr net.Addr) (*stun.Mess
 	}
 	_, err := c.conn.WriteTo(msg.Raw, addr)
 	if err != nil {
-		log.Warnf("Error sending request to %v", addr)
+		// log.Warnf("Error sending request to %v", addr)
 		return nil, err
 	}
 

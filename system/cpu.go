@@ -86,7 +86,7 @@ func getCpuInfo(ret *model.SystemInfo, cpuType string) (*model.SystemInfo, error
 					} else if strings.Contains(fields[0], "cache size") {
 						ret.CpuCache = strings.TrimSpace(strings.Join(fields[1:], " "))
 					} else if strings.Contains(fields[0], "cpu MHz") {
-						ret.CpuCache += " @ " + strings.TrimSpace(strings.Join(fields[1:], " ")) + " MHz"
+						ret.CpuModel += " @ " + strings.TrimSpace(strings.Join(fields[1:], " ")) + " MHz"
 					}
 				}
 			}
@@ -104,6 +104,8 @@ func getCpuInfo(ret *model.SystemInfo, cpuType string) (*model.SystemInfo, error
 				if len(fields) >= 2 {
 					if strings.Contains(fields[0], "Model name") {
 						ret.CpuModel = strings.TrimSpace(strings.Join(fields[1:], " "))
+					} else if strings.Contains(fields[0], "CPU MHz") {
+						ret.CpuModel += " @ " + strings.TrimSpace(strings.Join(fields[1:], " ")) + " MHz"
 					} else if strings.Contains(fields[0], "L1d cache") {
 						L1dcache = strings.TrimSpace(strings.Join(fields[1:], " "))
 					} else if strings.Contains(fields[0], "L1i cache") {

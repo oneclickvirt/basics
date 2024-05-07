@@ -83,13 +83,13 @@ func NetworkCheck(checkType string, enableSecurityCheck bool, language string) (
 	} else if checkType == "ipv4" {
 		ipInfoV4Result, _, _, _, _ := baseinfo.RunIpCheck("ipv4")
 		if ipInfoV4Result != nil {
-			ipInfo += processPrintIPInfo(" IPV4 ASN: ", " IPV4 Location: ", ipInfoV4Result)
+			ipInfo += processPrintIPInfo(" IPV4 ASN            : ", " IPV4 Location       : ", ipInfoV4Result)
 		}
 		return ipInfo, "", nil
 	} else if checkType == "ipv6" {
 		_, _, ipInfoV6Result, _, _ := baseinfo.RunIpCheck("ipv6")
 		if ipInfoV6Result != nil {
-			ipInfo += processPrintIPInfo(" IPV6 ASN: ", " IPV6 Location: ", ipInfoV6Result)
+			ipInfo += processPrintIPInfo(" IPV6 ASN            : ", " IPV6 Location       : ", ipInfoV6Result)
 		}
 		return ipInfo, "", nil
 	}

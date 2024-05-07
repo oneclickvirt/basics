@@ -72,7 +72,7 @@ jobs:
     strategy:
       matrix:
         goos: [windows, freebsd, linux, darwin]
-        goarch: [amd64, 386, s390x]
+        goarch: [amd64, 386]
         exclude:
           - goarch: 386
             goos: darwin

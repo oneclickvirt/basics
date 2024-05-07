@@ -51,8 +51,8 @@ func CheckSystemInfo(language string) string {
 		if runtime.GOOS != "windows" && runtime.GOOS != "macos" {
 			res += " AES-NI              : " + ret.CpuAesNi + "\n"
 		}
-		res += " VM-x/AMD-V/Hyper-V : " + ret.CpuVAH + "\n"
-		res += " RAM                : " + ret.MemoryUsage+" / "+ret.MemoryTotal + "\n"
+		res += " VM-x/AMD-V/Hyper-V  : " + ret.CpuVAH + "\n"
+		res += " RAM                 : " + ret.MemoryUsage+" / "+ret.MemoryTotal + "\n"
 		if ret.VirtioBalloon != "" {
 			res += " Virtio Balloon      : " + ret.VirtioBalloon + "\n"
 		}

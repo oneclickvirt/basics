@@ -16,6 +16,6 @@ Use ```-l``` to specify the output language, currently ```en``` and ```zh``` are
 curl https://raw.githubusercontent.com/oneclickvirt/basics/main/basics_install.sh -sSf | sh
 ```
 
-![图片](https://github.com/oneclickvirt/basics/assets/103393591/c04c75d6-3048-4f9d-a7f8-8a6cbb462587)
+![图片](https://github.com/oneclickvirt/basics/assets/103393591/3ae3c813-8ec2-4da1-a24d-f04de9438c36)
 
 ![图片](https://github.com/oneclickvirt/basics/assets/103393591/49404a18-1717-4875-b50d-26a930238248)

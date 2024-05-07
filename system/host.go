@@ -116,13 +116,14 @@ func getHostInfo() (string, string, string, string, string, string, string, stri
 		VmType = utils.CheckVMTypeWithWIMC()
 	}
 	// 查询NAT类型
-	ctx := context.Background()
-	gateway, err := nat.DiscoverGateway(ctx)
-	if err == nil {
-		natType := gateway.Type()
-		NatType = natType
-	} else {
-		NatType = getNatType()
+	NatType = getNatType()
+	if NatType == "Inconclusive" {
+		ctx := context.Background()
+		gateway, err := nat.DiscoverGateway(ctx)
+		if err == nil {
+			natType := gateway.Type()
+			NatType = natType
+		}
 	}
 	// 获取当前系统的本地时区
 	CurrentTimeZone = utils.GetTimeZone()

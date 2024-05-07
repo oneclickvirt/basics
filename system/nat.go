@@ -78,7 +78,7 @@ func getNatType() string {
 	// my changes start
 	if NatMappingBehavior != "" && NatFilteringBehavior != "" {
 		if NatMappingBehavior == "inconclusive" || NatFilteringBehavior == "inconclusive" {
-			return "inconclusive"
+			return "Inconclusive"
 		} else if NatMappingBehavior == "endpoint independent" && NatFilteringBehavior == "endpoint independent" {
 			return "Full Cone"
 		} else if NatMappingBehavior == "endpoint independent" && NatFilteringBehavior == "address dependent" {
@@ -91,7 +91,7 @@ func getNatType() string {
 			return fmt.Sprintf("%v[NatMappingBehavior] %v[NatFilteringBehavior]", NatMappingBehavior, NatFilteringBehavior)
 		}
 	} else {
-		return "inconclusive"
+		return "Inconclusive"
 	}
 	// my changes end
 }

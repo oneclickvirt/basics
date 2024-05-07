@@ -58,23 +58,23 @@ case $os in
         ;;
     esac
     ;;
-  OpenBSD)
-    case $arch in
-      amd64)
-        wget -O basics https://github.com/oneclickvirt/basics/releases/download/output/basics-openbsd-amd64
-        ;;
-      "i386" | "i686")
-        wget -O basics https://github.com/oneclickvirt/basics/releases/download/output/basics-openbsd-386
-        ;;
-      "armv7l" | "armv8" | "armv8l" | "aarch64")
-        wget -O basics https://github.com/oneclickvirt/basics/releases/download/output/basics-openbsd-arm64
-        ;;
-      *)
-        echo "Unsupported architecture: $arch"
-        exit 1
-        ;;
-    esac
-    ;;
+  # OpenBSD)
+  #   case $arch in
+  #     amd64)
+  #       wget -O basics https://github.com/oneclickvirt/basics/releases/download/output/basics-openbsd-amd64
+  #       ;;
+  #     "i386" | "i686")
+  #       wget -O basics https://github.com/oneclickvirt/basics/releases/download/output/basics-openbsd-386
+  #       ;;
+  #     "armv7l" | "armv8" | "armv8l" | "aarch64")
+  #       wget -O basics https://github.com/oneclickvirt/basics/releases/download/output/basics-openbsd-arm64
+  #       ;;
+  #     *)
+  #       echo "Unsupported architecture: $arch"
+  #       exit 1
+  #       ;;
+  #   esac
+  #   ;;
   *)
     echo "Unsupported operating system: $os"
     exit 1

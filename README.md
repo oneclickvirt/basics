@@ -2,7 +2,11 @@
 
 [![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Foneclickvirt%2Fbasics&count_bg=%232EFFF8&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false)](https://hits.seeyoufarm.com) [![Build and Release](https://github.com/oneclickvirt/basics/actions/workflows/main.yaml/badge.svg)](https://github.com/oneclickvirt/basics/actions/workflows/main.yaml)
 
-系统基础信息查询模块
+系统基础信息查询模块 (System Basic Information Query Module)
+
+## Information
+
+Use ```-l``` to specify the output language, currently ```en``` and ```zh``` are supported.
 
 ## Usage
 

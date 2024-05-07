@@ -3,6 +3,7 @@ package system
 import (
 	"runtime"
 	"strconv"
+
 	"github.com/oneclickvirt/basics/system/model"
 	"github.com/oneclickvirt/basics/system/utils"
 )
@@ -43,16 +44,16 @@ func CheckSystemInfo(language string) string {
 	ret := GetSystemInfo()
 	var res string
 	if language == "en" {
-		res += " Cpu Model           : " + ret.CpuModel + "\n"
-		res += " Cpu Cores           : " + ret.CpuCores + "\n"
+		res += " CPU Model           : " + ret.CpuModel + "\n"
+		res += " CPU Cores           : " + ret.CpuCores + "\n"
 		if ret.CpuCache != "" {
-			res += " Cpu Cache           : " + ret.CpuCache + "\n"
+			res += " CPU Cache           : " + ret.CpuCache + "\n"
 		}
 		if runtime.GOOS != "windows" && runtime.GOOS != "macos" {
 			res += " AES-NI              : " + ret.CpuAesNi + "\n"
 		}
 		res += " VM-x/AMD-V/Hyper-V  : " + ret.CpuVAH + "\n"
-		res += " RAM                 : " + ret.MemoryUsage+" / "+ret.MemoryTotal + "\n"
+		res += " RAM                 : " + ret.MemoryUsage + " / " + ret.MemoryTotal + "\n"
 		if ret.VirtioBalloon != "" {
 			res += " Virtio Balloon      : " + ret.VirtioBalloon + "\n"
 		}
@@ -62,11 +63,11 @@ func CheckSystemInfo(language string) string {
 		if ret.SwapTotal == "" && ret.SwapUsage == "" {
 			res += " Swap                : [ no swap partition or swap file detected ]" + "\n"
 		} else if ret.SwapTotal != "" && ret.SwapUsage != "" {
-			res += " Swap                : " + ret.SwapUsage+" / "+ret.SwapTotal + "\n"
+			res += " Swap                : " + ret.SwapUsage + " / " + ret.SwapTotal + "\n"
 		}
-		res += " Disk                : " + ret.DiskUsage+" / "+ret.DiskTotal + "\n"
+		res += " Disk                : " + ret.DiskUsage + " / " + ret.DiskTotal + "\n"
 		res += " Boot Path           : " + ret.BootPath + "\n"
-		res += " OS Release          : " + ret.Platform+" ["+ret.Arch+"] " + "\n"
+		res += " OS Release          : " + ret.Platform + " [" + ret.Arch + "] " + "\n"
 		if ret.Kernel != "" {
 			res += " Kernel              : " + ret.Kernel + "\n"
 		}
@@ -79,16 +80,16 @@ func CheckSystemInfo(language string) string {
 			res += " Tcp Accelerate      : " + ret.TcpAccelerationMethod + "\n"
 		}
 	} else if language == "zh" {
-		res += " Cpu 型号            : " + ret.CpuModel + "\n"
-		res += " Cpu 数量            : " + ret.CpuCores + "\n"
+		res += " CPU 型号            : " + ret.CpuModel + "\n"
+		res += " CPU 数量            : " + ret.CpuCores + "\n"
 		if ret.CpuCache != "" {
-			res += " Cpu 缓存            : " + ret.CpuCache + "\n"
+			res += " CPU 缓存            : " + ret.CpuCache + "\n"
 		}
 		if runtime.GOOS != "windows" && runtime.GOOS != "macos" {
 			res += " AES-NI              : " + ret.CpuAesNi + "\n"
 		}
 		res += " VM-x/AMD-V/Hyper-V  : " + ret.CpuVAH + "\n"
-		res += " 内存                : " + ret.MemoryUsage+" / "+ret.MemoryTotal + "\n"
+		res += " 内存                : " + ret.MemoryUsage + " / " + ret.MemoryTotal + "\n"
 		if ret.VirtioBalloon != "" {
 			res += " Virtio Balloon      : " + ret.VirtioBalloon + "\n"
 		}
@@ -98,11 +99,11 @@ func CheckSystemInfo(language string) string {
 		if ret.SwapTotal == "" && ret.SwapUsage == "" {
 			res += " Swap                : [ no swap partition or swap file detected ]" + "\n"
 		} else if ret.SwapTotal != "" && ret.SwapUsage != "" {
-			res += " Swap                : " + ret.SwapUsage+" / "+ret.SwapTotal + "\n"
+			res += " Swap                : " + ret.SwapUsage + " / " + ret.SwapTotal + "\n"
 		}
-		res += " 硬盘空间            : " + ret.DiskUsage+" / "+ret.DiskTotal + "\n"
+		res += " 硬盘空间            : " + ret.DiskUsage + " / " + ret.DiskTotal + "\n"
 		res += " 启动盘路径          : " + ret.BootPath + "\n"
-		res += " 系统                : " + ret.Platform+" ["+ret.Arch+"] " + "\n"
+		res += " 系统                : " + ret.Platform + " [" + ret.Arch + "] " + "\n"
 		if ret.Kernel != "" {
 			res += " 内核                : " + ret.Kernel + "\n"
 		}

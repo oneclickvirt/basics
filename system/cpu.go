@@ -85,7 +85,7 @@ func getCpuInfo(ret *model.SystemInfo, cpuType string) (*model.SystemInfo, error
 						ret.CpuModel = strings.TrimSpace(strings.Join(fields[1:], " "))
 					} else if strings.Contains(fields[0], "cache size") {
 						ret.CpuCache = strings.TrimSpace(strings.Join(fields[1:], " "))
-					} else if strings.Contains(fields[0], "cpu MHz") {
+					} else if strings.Contains(fields[0], "cpu MHz") && !strings.Contains(ret.CpuModel, "@") {
 						ret.CpuModel += " @ " + strings.TrimSpace(strings.Join(fields[1:], " ")) + " MHz"
 					}
 				}
@@ -102,9 +102,9 @@ func getCpuInfo(ret *model.SystemInfo, cpuType string) (*model.SystemInfo, error
 			for _, line := range lines {
 				fields := strings.Split(line, ":")
 				if len(fields) >= 2 {
-					if strings.Contains(fields[0], "Model name") {
+					if strings.Contains(fields[0], "Model name") && !strings.Contains(fields[0], "BIOS Model name") && ret.CpuModel == "" {
 						ret.CpuModel = strings.TrimSpace(strings.Join(fields[1:], " "))
-					} else if strings.Contains(fields[0], "CPU MHz") {
+					} else if strings.Contains(fields[0], "CPU MHz") && !strings.Contains(ret.CpuModel, "@") {
 						ret.CpuModel += " @ " + strings.TrimSpace(strings.Join(fields[1:], " ")) + " MHz"
 					} else if strings.Contains(fields[0], "L1d cache") {
 						L1dcache = strings.TrimSpace(strings.Join(fields[1:], " "))

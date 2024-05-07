@@ -4,7 +4,7 @@
 
 系统基础信息查询模块 (System Basic Information Query Module)
 
-Include: https://github.com/oneclickvirt/backtrace
+Include: https://github.com/oneclickvirt/gostun
 
 ## Information
 

@@ -76,6 +76,8 @@ jobs:
         exclude:
           - goarch: 386
             goos: darwin
+          - goarch: 386
+            goos: openbsd
         include:
           - goos: windows
             goarch: 386
@@ -103,10 +105,6 @@ jobs:
             goarch: mipsle
           - goos: linux
             goarch: mips
-          - goos: linux
-            goarch: ppc64
-          - goos: linux
-            goarch: ppc64le
           - goos: freebsd
             goarch: arm64
           - goos: freebsd
@@ -129,3 +127,7 @@ jobs:
           # - goos: linux
           #   goarch: arm
           #   goarm: 5
+          # - goos: linux
+          #   goarch: ppc64
+          # - goos: linux
+          #   goarch: ppc64le

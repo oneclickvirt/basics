@@ -74,10 +74,10 @@ func NetworkCheck(checkType string, enableSecurityCheck bool, language string) (
 	if checkType == "both" {
 		ipInfoV4Result, _, ipInfoV6Result, _, _ := baseinfo.RunIpCheck("both")
 		if ipInfoV4Result != nil {
-			ipInfo += processPrintIPInfo(" IPV4 ASN: ", " IPV4 Location: ", ipInfoV4Result)
+			ipInfo += processPrintIPInfo(" IPV4 ASN            : ", " IPV4 Location       : ", ipInfoV4Result)
 		}
 		if ipInfoV6Result != nil {
-			ipInfo += processPrintIPInfo(" IPV6 ASN: ", " IPV6 Location: ", ipInfoV6Result)
+			ipInfo += processPrintIPInfo(" IPV6 ASN            : ", " IPV6 Location       : ", ipInfoV6Result)
 		}
 		return ipInfo, "", nil
 	} else if checkType == "ipv4" {

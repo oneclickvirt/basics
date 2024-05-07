@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/oneclickvirt/basics/network"
 	"github.com/oneclickvirt/basics/system"
@@ -16,7 +17,6 @@ func main() {
 	ipInfo, _, _ := network.NetworkCheck("both", false, "zh")
 	res := system.CheckSystemInfo("zh")
 	fmt.Println("--------------------------------------------------")
-	fmt.Printf(res)
-	fmt.Printf(ipInfo)
+	fmt.Printf(strings.ReplaceAll(res+ipInfo, "\n\n", "\n"))
 	fmt.Println("--------------------------------------------------")
 }

@@ -1,7 +1,6 @@
 package system
 
 import (
-	"fmt"
 	"runtime"
 	"strconv"
 
@@ -41,41 +40,81 @@ func GetSystemInfo() *model.SystemInfo {
 	return ret
 }
 
-func CheckSystemInfo() {
+func CheckSystemInfo(language string) string {
 	ret := GetSystemInfo()
-	fmt.Println("Cpu Model          :", ret.CpuModel)
-	fmt.Println("Cpu Cores          :", ret.CpuCores)
-	if ret.CpuCache != "" {
-		fmt.Println("Cpu Cache          :", ret.CpuCache)
+	var res string
+	if language == "en" {
+		res += " Cpu Model          : " + ret.CpuModel + "\n"
+		res += " Cpu Cores          : " + ret.CpuCores + "\n"
+		if ret.CpuCache != "" {
+			res += " Cpu Cache          : " + ret.CpuCache + "\n"
+		}
+		if runtime.GOOS != "windows" && runtime.GOOS != "macos" {
+			res += " AES-NI             : " + ret.CpuAesNi + "\n"
+		}
+		res += " VM-x/AMD-V/Hyper-V : " + ret.CpuVAH + "\n"
+		res += " RAM                : " + ret.MemoryUsage+" / "+ret.MemoryTotal + "\n"
+		if ret.VirtioBalloon != "" {
+			res += " Virtio Balloon     : " + ret.VirtioBalloon + "\n"
+		}
+		if ret.KSM != "" {
+			res += " KSM                : " + ret.KSM + "\n"
+		}
+		if ret.SwapTotal == "" && ret.SwapUsage == "" {
+			res += " Swap               : [ no swap partition or swap file detected ]" + "\n"
+		} else if ret.SwapTotal != "" && ret.SwapUsage != "" {
+			res += " Swap               : " + ret.SwapUsage+" / "+ret.SwapTotal + "\n"
+		}
+		res += " Disk               : " + ret.DiskUsage+" / "+ret.DiskTotal + "\n"
+		res += " Boot Path          : " + ret.BootPath + "\n"
+		res += " OS Release         : " + ret.Platform+" ["+ret.Arch+"] " + "\n"
+		if ret.Kernel != "" {
+			res += " Kernel             : " + ret.Kernel + "\n"
+		}
+		res += " Uptime             : " + ret.Uptime + "\n"
+		res += " Current Time Zone  : " + ret.TimeZone + "\n"
+		res += " Load               : " + ret.Load + "\n"
+		res += " VM Type            : " + ret.VmType + "\n"
+		res += " NAT Type           : " + ret.NatType + "\n"
+		if ret.TcpAccelerationMethod != "" {
+			res += " Tcp Accelerate     : " + ret.TcpAccelerationMethod + "\n"
+		}
+	} else if language == "zh" {
+		res += " Cpu 型号            : " + ret.CpuModel + "\n"
+		res += " Cpu 数量            : " + ret.CpuCores + "\n"
+		if ret.CpuCache != "" {
+			res += " Cpu 缓存            : " + ret.CpuCache + "\n"
+		}
+		if runtime.GOOS != "windows" && runtime.GOOS != "macos" {
+			res += " AES-NI              : " + ret.CpuAesNi + "\n"
+		}
+		res += " VM-x/AMD-V/Hyper-V  : " + ret.CpuVAH + "\n"
+		res += " 内存                : " + ret.MemoryUsage+" / "+ret.MemoryTotal + "\n"
+		if ret.VirtioBalloon != "" {
+			res += " Virtio Balloon      : " + ret.VirtioBalloon + "\n"
+		}
+		if ret.KSM != "" {
+			res += " KSM                 : " + ret.KSM + "\n"
+		}
+		if ret.SwapTotal == "" && ret.SwapUsage == "" {
+			res += " Swap                : [ no swap partition or swap file detected ]" + "\n"
+		} else if ret.SwapTotal != "" && ret.SwapUsage != "" {
+			res += " Swap               : " + ret.SwapUsage+" / "+ret.SwapTotal + "\n"
+		}
+		res += " 硬盘空间            : " + ret.DiskUsage+" / "+ret.DiskTotal + "\n"
+		res += " 启动盘路径          : " + ret.BootPath + "\n"
+		res += " 系统                : " + ret.Platform+" ["+ret.Arch+"] " + "\n"
+		if ret.Kernel != "" {
+			res += " 内核                : " + ret.Kernel + "\n"
+		}
+		res += " 系统在线时间        : " + ret.Uptime + "\n"
+		res += " 时区                : " + ret.TimeZone + "\n"
+		res += " 负载                : " + ret.Load + "\n"
+		res += " 虚拟化架构          : " + ret.VmType + "\n"
+		res += " NAT类型             : " + ret.NatType + "\n"
+		if ret.TcpAccelerationMethod != "" {
+			res += " TCP加速方式         : " + ret.TcpAccelerationMethod + "\n"
+		}
 	}
-	if runtime.GOOS != "windows" && runtime.GOOS != "macos" {
-		fmt.Println("AES-NI             :", ret.CpuAesNi)
-	}
-	fmt.Println("VM-x/AMD-V/Hyper-V :", ret.CpuVAH)
-	fmt.Println("RAM                :", ret.MemoryUsage+" / "+ret.MemoryTotal)
-	if ret.VirtioBalloon != "" {
-		fmt.Println("Virtio Balloon     :", ret.VirtioBalloon)
-	}
-	if ret.KSM != "" {
-		fmt.Println("KSM                :", ret.KSM)
-	}
-	if ret.SwapTotal == "" && ret.SwapUsage == "" {
-		fmt.Println("Swap               : [ no swap partition or swap file detected ]")
-	} else if ret.SwapTotal != "" && ret.SwapUsage != "" {
-		fmt.Println("Swap               :", ret.SwapUsage+" / "+ret.SwapTotal)
-	}
-	fmt.Println("Disk               :", ret.DiskUsage+" / "+ret.DiskTotal)
-	fmt.Println("Boot Path          :", ret.BootPath)
-	fmt.Println("OS Release         :", ret.Platform+" ["+ret.Arch+"] ")
-	if ret.Kernel != "" {
-		fmt.Println("Kernel             :", ret.Kernel)
-	}
-	fmt.Println("Uptime             :", ret.Uptime)
-	fmt.Println("Current Time Zone  :", ret.TimeZone)
-	fmt.Println("Load               :", ret.Load)
-	fmt.Println("VM Type            :", ret.VmType)
-	fmt.Println("NAT Type           :", ret.NatType)
-	if ret.TcpAccelerationMethod != "" {
-		fmt.Println("Tcp Accelerate     :", ret.TcpAccelerationMethod)
-	}
+	return res
 }

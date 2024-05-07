@@ -14,8 +14,9 @@ func main() {
 	}()
 	fmt.Println("项目地址:", "https://github.com/oneclickvirt/basics")
 	ipInfo, _, _ := network.NetworkCheck("both", false, "zh")
+	res := system.CheckSystemInfo("zh")
 	fmt.Println("--------------------------------------------------")
-	system.CheckSystemInfo()
+	fmt.Printf(res)
 	fmt.Printf(ipInfo)
 	fmt.Println("--------------------------------------------------")
 }

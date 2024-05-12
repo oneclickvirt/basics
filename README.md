@@ -10,6 +10,10 @@ Include: https://github.com/oneclickvirt/gostun
 
 Use ```-l``` to specify the output language, currently ```en``` and ```zh``` are supported.
 
+## TODO
+
+- [ ] 检测GPU相关信息
+
 ## Usage
 
 ```

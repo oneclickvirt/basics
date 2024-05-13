@@ -17,13 +17,13 @@ Use ```-l``` to specify the output language, currently ```en``` and ```zh``` are
 ## Usage
 
 ```
-curl https://raw.githubusercontent.com/oneclickvirt/basics/main/basics_install.sh -sSf | sh
+curl https://raw.githubusercontent.com/oneclickvirt/basics/main/basics_install.sh -sSf | bash
 ```
 
 或
 
 ```
-curl https://cdn.spiritlhl.net/https://raw.githubusercontent.com/oneclickvirt/basics/main/basics_install.sh -sSf | sh
+curl https://cdn.spiritlhl.net/https://raw.githubusercontent.com/oneclickvirt/basics/main/basics_install.sh -sSf | bash
 ```
 
 ![图片](https://github.com/oneclickvirt/basics/assets/103393591/634064de-17a6-485f-b401-dc3a159a18c4)

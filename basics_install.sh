@@ -1,6 +1,6 @@
 #!/bin/bash
 #From https://github.com/oneclickvirt/basics
-#2024.05.06
+#2024.05.21
 
 rm -rf basics
 os=$(uname -s)
@@ -39,7 +39,7 @@ Linux)
   "i386" | "i686")
     wget -O basics "${cdn_success_url}https://github.com/oneclickvirt/basics/releases/download/output/basics-linux-386"
     ;;
-  "armv7l" | "armv8" | "armv8l" | "aarch64")
+  "armv7l" | "armv8" | "armv8l" | "aarch64" | "arm64")
     wget -O basics "${cdn_success_url}https://github.com/oneclickvirt/basics/releases/download/output/basics-linux-arm64"
     ;;
   *)
@@ -56,7 +56,7 @@ Darwin)
   "i386" | "i686")
     wget -O basics "${cdn_success_url}https://github.com/oneclickvirt/basics/releases/download/output/basics-darwin-386"
     ;;
-  "armv7l" | "armv8" | "armv8l" | "aarch64")
+  "armv7l" | "armv8" | "armv8l" | "aarch64" | "arm64")
     wget -O basics "${cdn_success_url}https://github.com/oneclickvirt/basics/releases/download/output/basics-darwin-arm64"
     ;;
   *)
@@ -73,7 +73,7 @@ FreeBSD)
   "i386" | "i686")
     wget -O basics "${cdn_success_url}https://github.com/oneclickvirt/basics/releases/download/output/basics-freebsd-386"
     ;;
-  "armv7l" | "armv8" | "armv8l" | "aarch64")
+  "armv7l" | "armv8" | "armv8l" | "aarch64" | "arm64")
     wget -O basics "${cdn_success_url}https://github.com/oneclickvirt/basics/releases/download/output/basics-freebsd-arm64"
     ;;
   *)
@@ -90,7 +90,7 @@ FreeBSD)
 #     "i386" | "i686")
 #       wget -O basics https://github.com/oneclickvirt/basics/releases/download/output/basics-openbsd-386
 #       ;;
-#     "armv7l" | "armv8" | "armv8l" | "aarch64")
+#     "armv7l" | "armv8" | "armv8l" | "aarch64" | "arm64")
 #       wget -O basics https://github.com/oneclickvirt/basics/releases/download/output/basics-openbsd-arm64
 #       ;;
 #     *)

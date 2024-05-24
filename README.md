@@ -12,7 +12,7 @@ Use ```-l``` to specify the output language, currently ```en``` and ```zh``` are
 
 ## TODO
 
-- [ ] 使用```sysctl```获取信息-特化适配freebsd、openbsd系统
+- [ ] 使用```sysctl```获取CPU信息-特化适配freebsd、openbsd系统
 - [ ] 检测GPU相关信息
 
 ## Usage

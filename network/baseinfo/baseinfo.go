@@ -8,6 +8,7 @@ import (
 
 	"github.com/oneclickvirt/basics/model"
 	"github.com/oneclickvirt/basics/network/utils"
+	. "github.com/oneclickvirt/defaultset"
 )
 
 // FetchIPInfoIo 从 ipinfo.io 获取 IP 信息
@@ -160,6 +161,10 @@ func executeFunctions(checkType string, fetchFunc func(string) (*model.IpInfo, *
 
 // RunIpCheck 并发请求获取信息
 func RunIpCheck(checkType string) (*model.IpInfo, *model.SecurityInfo, *model.IpInfo, *model.SecurityInfo, error) {
+	if model.EnableLoger {
+		InitLogger()
+		defer Logger.Sync()
+	}
 	// 定义函数名数组
 	functions := []func(string) (*model.IpInfo, *model.SecurityInfo, error){
 		FetchIPInfoIo,
@@ -193,6 +198,9 @@ func RunIpCheck(checkType string) (*model.IpInfo, *model.SecurityInfo, *model.Ip
 			go executeFunctions("ipv6", f, ipInfoIPv6, securityInfoIPv6, &wg)
 		}
 	} else {
+		if model.EnableLoger {
+			Logger.Info("RunIpCheck: wrong checkType")
+		}
 		return nil, nil, nil, nil, fmt.Errorf("wrong checkType")
 	}
 	go func() {
@@ -215,6 +223,10 @@ func RunIpCheck(checkType string) (*model.IpInfo, *model.SecurityInfo, *model.Ip
 			ipInfoV4TempResult, err := utils.CompareAndMergeIpInfo(ipInfoV4Result, ipInfo)
 			if err == nil {
 				ipInfoV4Result = ipInfoV4TempResult
+			} else {
+				if model.EnableLoger {
+					Logger.Info(fmt.Sprintf("utils.CompareAndMergeIpInfo(ipInfoV4Result, ipInfo): %s", err.Error()))
+				}
 			}
 		}
 	}
@@ -226,6 +238,10 @@ func RunIpCheck(checkType string) (*model.IpInfo, *model.SecurityInfo, *model.Ip
 			ipInfoV6TempResult, err := utils.CompareAndMergeIpInfo(ipInfoV6Result, ipInfo)
 			if err == nil {
 				ipInfoV6Result = ipInfoV6TempResult
+			} else {
+				if model.EnableLoger {
+					Logger.Info(fmt.Sprintf("utils.CompareAndMergeIpInfo(ipInfoV6Result, ipInfo): %s", err.Error()))
+				}
 			}
 		}
 	}
@@ -237,6 +253,10 @@ func RunIpCheck(checkType string) (*model.IpInfo, *model.SecurityInfo, *model.Ip
 			securityInfoV4TempResult, err := utils.CompareAndMergeSecurityInfo(securityInfoV4Result, securityInfo)
 			if err == nil {
 				securityInfoV4Result = securityInfoV4TempResult
+			} else {
+				if model.EnableLoger {
+					Logger.Info(fmt.Sprintf("utils.CompareAndMergeSecurityInfo(securityInfoV4Result, securityInfo): %s", err.Error()))
+				}
 			}
 		}
 	}
@@ -248,6 +268,10 @@ func RunIpCheck(checkType string) (*model.IpInfo, *model.SecurityInfo, *model.Ip
 			securityInfoV6TempResult, err := utils.CompareAndMergeSecurityInfo(securityInfoV6Result, securityInfo)
 			if err == nil {
 				securityInfoV6Result = securityInfoV6TempResult
+			} else {
+				if model.EnableLoger {
+					Logger.Info(fmt.Sprintf("utils.CompareAndMergeSecurityInfo(securityInfoV6Result, securityInfo): %s", err.Error()))
+				}
 			}
 		}
 	}

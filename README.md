@@ -17,6 +17,8 @@ Use ```-l``` to specify the output language, currently ```en``` and ```zh``` are
 
 ## Usage
 
+下载及安装
+
 ```
 curl https://raw.githubusercontent.com/oneclickvirt/basics/main/basics_install.sh -sSf | bash
 ```
@@ -27,7 +29,25 @@ curl https://raw.githubusercontent.com/oneclickvirt/basics/main/basics_install.s
 curl https://cdn.spiritlhl.net/https://raw.githubusercontent.com/oneclickvirt/basics/main/basics_install.sh -sSf | bash
 ```
 
+使用
+
+```
+basics
+```
+
+或
+
+```
+./basics
+```
+
+进行测试
+
 无环境依赖，理论上适配所有系统和主流架构，更多架构请查看 https://github.com/oneclickvirt/basics/releases/tag/output
+
+```
+
+```
 
 ![图片](https://github.com/oneclickvirt/basics/assets/103393591/634064de-17a6-485f-b401-dc3a159a18c4)
 

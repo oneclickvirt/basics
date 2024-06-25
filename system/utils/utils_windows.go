@@ -5,7 +5,7 @@ import (
 	"math"
 	"strings"
 
-	"github.com/oneclickvirt/basics/system/model"
+	"github.com/oneclickvirt/basics/model"
 	"github.com/yusufpapurcu/wmi"
 	"golang.org/x/sys/windows/registry"
 )

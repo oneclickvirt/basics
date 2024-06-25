@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/oneclickvirt/basics/system/model"
+	"github.com/oneclickvirt/basics/model"
 	"github.com/oneclickvirt/basics/system/utils"
 	"github.com/shirou/gopsutil/cpu"
 )

@@ -4,7 +4,7 @@ import (
 	"runtime"
 	"strconv"
 
-	"github.com/oneclickvirt/basics/system/model"
+	"github.com/oneclickvirt/basics/model"
 	"github.com/oneclickvirt/basics/system/utils"
 )
 
@@ -24,7 +24,7 @@ func GetSystemInfo() *model.SystemInfo {
 	// CPU信息查询
 	ret, _ = getCpuInfo(ret, cpuType)
 	// 硬盘信息查询
-	ret.DiskTotal, ret.DiskUsage, ret.BootPath, _ = getDiskInfo()
+	ret.DiskTotal, ret.DiskUsage, ret.Percentage, ret.BootPath, _ = getDiskInfo()
 	// 内存信息查询
 	ret.MemoryTotal, ret.MemoryUsage, ret.SwapTotal, ret.SwapUsage, ret.VirtioBalloon, ret.KSM = getMemoryInfo()
 	// 获取负载信息
@@ -65,7 +65,12 @@ func CheckSystemInfo(language string) string {
 		} else if ret.SwapTotal != "" && ret.SwapUsage != "" {
 			res += " Swap                : " + ret.SwapUsage + " / " + ret.SwapTotal + "\n"
 		}
-		res += " Disk                : " + ret.DiskUsage + " / " + ret.DiskTotal + "\n"
+		res += " Disk                : " + ret.DiskUsage + " / " + ret.DiskTotal
+		if ret.Percentage != "" {
+			res += " [" + ret.Percentage + "] " + "\n"
+		} else {
+			res += "\n"
+		}
 		res += " Boot Path           : " + ret.BootPath + "\n"
 		res += " OS Release          : " + ret.Platform + " [" + ret.Arch + "] " + "\n"
 		if ret.Kernel != "" {
@@ -101,7 +106,12 @@ func CheckSystemInfo(language string) string {
 		} else if ret.SwapTotal != "" && ret.SwapUsage != "" {
 			res += " Swap                : " + ret.SwapUsage + " / " + ret.SwapTotal + "\n"
 		}
-		res += " 硬盘空间            : " + ret.DiskUsage + " / " + ret.DiskTotal + "\n"
+		res += " 硬盘空间            : " + ret.DiskUsage + " / " + ret.DiskTotal
+		if ret.Percentage != "" {
+			res += " [" + ret.Percentage + "] " + "\n"
+		} else {
+			res += "\n"
+		}
 		res += " 启动盘路径          : " + ret.BootPath + "\n"
 		res += " 系统                : " + ret.Platform + " [" + ret.Arch + "] " + "\n"
 		if ret.Kernel != "" {

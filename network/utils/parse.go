@@ -1,13 +1,13 @@
 package utils
 
 import (
-	networkModel "github.com/oneclickvirt/basics/network/model"
+	"github.com/oneclickvirt/basics/model"
 	"strconv"
 	"strings"
 )
 
-func ParseIpInfo(data map[string]interface{}) *networkModel.IpInfo {
-	ipInfo := &networkModel.IpInfo{}
+func ParseIpInfo(data map[string]interface{}) *model.IpInfo {
+	ipInfo := &model.IpInfo{}
 	if ip, ok := data["ip"].(string); ok {
 		ipInfo.Ip = ip
 	}
@@ -37,8 +37,8 @@ func ParseIpInfo(data map[string]interface{}) *networkModel.IpInfo {
 	return ipInfo
 }
 
-func ParseSecurityInfo(data map[string]interface{}) *networkModel.SecurityInfo {
-	securityInfo := &networkModel.SecurityInfo{}
+func ParseSecurityInfo(data map[string]interface{}) *model.SecurityInfo {
+	securityInfo := &model.SecurityInfo{}
 	if security, ok := data["security"].(map[string]interface{}); ok {
 		if isAbuser, ok := security["is_abuser"].(bool); ok {
 			securityInfo.IsAbuser = strconv.FormatBool(isAbuser)

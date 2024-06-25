@@ -2,13 +2,13 @@ package baseinfo
 
 import (
 	"fmt"
-	networkModel "github.com/oneclickvirt/basics/network/model"
+	"github.com/oneclickvirt/basics/model"
 	"testing"
 	"time"
 )
 
 // printIPInfo 重构输出函数
-func printIPInfo(ipInfo *networkModel.IpInfo, securityInfo *networkModel.SecurityInfo, err error) {
+func printIPInfo(ipInfo *model.IpInfo, securityInfo *model.SecurityInfo, err error) {
 	if err != nil {
 		fmt.Println("获取 IP 信息时出错:", err)
 		return

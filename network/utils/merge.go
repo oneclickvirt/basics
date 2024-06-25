@@ -3,7 +3,7 @@ package utils
 import (
 	"fmt"
 
-	networkModel "github.com/oneclickvirt/basics/network/model"
+	"github.com/oneclickvirt/basics/model"
 )
 
 // chooseString 用于选择非空字符串
@@ -15,12 +15,12 @@ func chooseString(src, dst string) string {
 }
 
 // CompareAndMergeIpInfo 用于比较和合并两个 IpInfo 结构体
-func CompareAndMergeIpInfo(dst, src *networkModel.IpInfo) (res *networkModel.IpInfo, err error) {
+func CompareAndMergeIpInfo(dst, src *model.IpInfo) (res *model.IpInfo, err error) {
 	if src == nil {
 		return nil, fmt.Errorf("Error merge IpInfo")
 	}
 	if dst == nil {
-		dst = &networkModel.IpInfo{}
+		dst = &model.IpInfo{}
 	}
 	dst.Ip = chooseString(src.Ip, dst.Ip)
 	dst.ASN = chooseString(src.ASN, dst.ASN)
@@ -32,12 +32,12 @@ func CompareAndMergeIpInfo(dst, src *networkModel.IpInfo) (res *networkModel.IpI
 }
 
 // CompareAndMergeSecurityInfo 用于比较和合并两个 SecurityInfo 结构体
-func CompareAndMergeSecurityInfo(dst, src *networkModel.SecurityInfo) (res *networkModel.SecurityInfo, err error) {
+func CompareAndMergeSecurityInfo(dst, src *model.SecurityInfo) (res *model.SecurityInfo, err error) {
 	if src == nil {
 		return nil, fmt.Errorf("Error merge SecurityInfo")
 	}
 	if dst == nil {
-		dst = &networkModel.SecurityInfo{}
+		dst = &model.SecurityInfo{}
 	}
 	dst.IsAbuser = chooseString(src.IsAbuser, dst.IsAbuser)
 	dst.IsAttacker = chooseString(src.IsAttacker, dst.IsAttacker)

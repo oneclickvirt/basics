@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/oneclickvirt/basics/model"
 	"github.com/oneclickvirt/basics/network/baseinfo"
-	"github.com/oneclickvirt/basics/network/model"
+	. "github.com/oneclickvirt/defaultset"
 )
 
 // sortAndTranslateText 对原始文本进行排序和翻译
@@ -70,9 +71,16 @@ func processPrintIPInfo(headASNString string, headLocationString string, ipResul
 // checkType 可选 both ipv4 ipv6
 // language 暂时仅支持 en 或 zh
 func NetworkCheck(checkType string, enableSecurityCheck bool, language string) (string, string, error) {
+	if model.EnableLoger {
+		InitLogger()
+		defer Logger.Sync()
+	}
 	var ipInfo string
 	if checkType == "both" {
-		ipInfoV4Result, _, ipInfoV6Result, _, _ := baseinfo.RunIpCheck("both")
+		ipInfoV4Result, _, ipInfoV6Result, _, err := baseinfo.RunIpCheck("both")
+		if err != nil && model.EnableLoger {
+			Logger.Info(err.Error())
+		}
 		if ipInfoV4Result != nil {
 			ipInfo += processPrintIPInfo(" IPV4 ASN            : ", " IPV4 Location       : ", ipInfoV4Result)
 		}
@@ -81,13 +89,19 @@ func NetworkCheck(checkType string, enableSecurityCheck bool, language string) (
 		}
 		return ipInfo, "", nil
 	} else if checkType == "ipv4" {
-		ipInfoV4Result, _, _, _, _ := baseinfo.RunIpCheck("ipv4")
+		ipInfoV4Result, _, _, _, err := baseinfo.RunIpCheck("ipv4")
+		if err != nil && model.EnableLoger {
+			Logger.Info(err.Error())
+		}
 		if ipInfoV4Result != nil {
 			ipInfo += processPrintIPInfo(" IPV4 ASN            : ", " IPV4 Location       : ", ipInfoV4Result)
 		}
 		return ipInfo, "", nil
 	} else if checkType == "ipv6" {
-		_, _, ipInfoV6Result, _, _ := baseinfo.RunIpCheck("ipv6")
+		_, _, ipInfoV6Result, _, err := baseinfo.RunIpCheck("ipv6")
+		if err != nil && model.EnableLoger {
+			Logger.Info(err.Error())
+		}
 		if ipInfoV6Result != nil {
 			ipInfo += processPrintIPInfo(" IPV6 ASN            : ", " IPV6 Location       : ", ipInfoV6Result)
 		}

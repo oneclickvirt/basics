@@ -6,13 +6,21 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/oneclickvirt/basics/model"
 	"github.com/oneclickvirt/basics/network"
 	"github.com/oneclickvirt/basics/system"
 )
 
 func main() {
+	var showVersion bool
+	flag.BoolVar(&showVersion, "v", false, "show version")
+	flag.BoolVar(&model.EnableLoger, "e", false, "Enable logging")
 	languagePtr := flag.String("l", "", "Language parameter (en or zh)")
 	flag.Parse()
+	if showVersion {
+		fmt.Println(model.BasicsVersion)
+		return
+	}
 	var language string
 	if *languagePtr == "" {
 		language = "zh"

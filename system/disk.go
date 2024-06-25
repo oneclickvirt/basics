@@ -10,8 +10,8 @@ import (
 )
 
 // getDiskInfo 获取硬盘信息
-func getDiskInfo() (string, string, string, error) {
-	var diskTotalStr, diskUsageStr, bootPath string
+func getDiskInfo() (string, string, string, string, error) {
+	var diskTotalStr, diskUsageStr, percentageStr, bootPath string
 	tempDiskTotal, tempDiskUsage := getDiskTotalAndUsed()
 	diskTotalGB := float64(tempDiskTotal) / (1024 * 1024 * 1024)
 	diskUsageGB := float64(tempDiskUsage) / (1024 * 1024 * 1024)
@@ -69,9 +69,11 @@ func getDiskInfo() (string, string, string, error) {
 							diskTotalGB = float64(tpDiskTotal) / (1024 * 1024)
 							diskUsageGB = float64(tpDiskUsage) / (1024 * 1024)
 							if diskTotalGB < 1 {
-								diskTotalStr = strconv.FormatFloat(diskTotalGB*1024, 'f', 2, 64) + " MB" + " [" + nonEmptyFields[4] + "]"
+								diskTotalStr = strconv.FormatFloat(diskTotalGB*1024, 'f', 2, 64) + " MB"
+								percentageStr = nonEmptyFields[4]
 							} else {
-								diskTotalStr = strconv.FormatFloat(diskTotalGB, 'f', 2, 64) + " GB" + " [" + nonEmptyFields[4] + "]"
+								diskTotalStr = strconv.FormatFloat(diskTotalGB, 'f', 2, 64) + " GB"
+								percentageStr = nonEmptyFields[4]
 							}
 							if diskUsageGB < 1 {
 								diskUsageStr = strconv.FormatFloat(diskUsageGB*1024, 'f', 2, 64) + " MB"
@@ -84,7 +86,11 @@ func getDiskInfo() (string, string, string, error) {
 			}
 		}
 	}
-	return diskTotalStr, diskUsageStr, bootPath, nil
+	// 两个%避免被转义
+	if percentageStr != "" && strings.Contains(percentageStr, "%") {
+		percentageStr = strings.ReplaceAll(percentageStr, "%", "%%")
+	}
+	return diskTotalStr, diskUsageStr, percentageStr, bootPath, nil
 }
 
 func getDiskTotalAndUsed() (total uint64, used uint64) {

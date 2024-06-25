@@ -2,6 +2,7 @@
 #From https://github.com/oneclickvirt/basics
 #2024.05.21
 
+rm -rf /usr/bin/basics
 rm -rf basics
 os=$(uname -s)
 arch=$(uname -m)
@@ -106,4 +107,4 @@ FreeBSD)
 esac
 
 chmod 777 basics
-./basics
+cp basics /usr/bin/basics

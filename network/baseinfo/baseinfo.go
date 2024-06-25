@@ -2,11 +2,12 @@ package baseinfo
 
 import (
 	"fmt"
-	"github.com/oneclickvirt/basics/network/model"
-	"github.com/oneclickvirt/basics/network/utils"
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/oneclickvirt/basics/model"
+	"github.com/oneclickvirt/basics/network/utils"
 )
 
 // FetchIPInfoIo 从 ipinfo.io 获取 IP 信息

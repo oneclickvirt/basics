@@ -1,9 +1,10 @@
 package utils
 
 import (
-	"github.com/oneclickvirt/basics/model"
 	"strconv"
 	"strings"
+
+	"github.com/oneclickvirt/basics/model"
 )
 
 func ParseIpInfo(data map[string]interface{}) *model.IpInfo {
@@ -41,37 +42,37 @@ func ParseSecurityInfo(data map[string]interface{}) *model.SecurityInfo {
 	securityInfo := &model.SecurityInfo{}
 	if security, ok := data["security"].(map[string]interface{}); ok {
 		if isAbuser, ok := security["is_abuser"].(bool); ok {
-			securityInfo.IsAbuser = strconv.FormatBool(isAbuser)
+			securityInfo.IsAbuser = BoolToString(isAbuser)
 		}
 		if isAttacker, ok := security["is_attacker"].(bool); ok {
-			securityInfo.IsAttacker = strconv.FormatBool(isAttacker)
+			securityInfo.IsAttacker = BoolToString(isAttacker)
 		}
 		if isBogon, ok := security["is_bogon"].(bool); ok {
-			securityInfo.IsBogon = strconv.FormatBool(isBogon)
+			securityInfo.IsBogon = BoolToString(isBogon)
 		}
 		if isCloudProvider, ok := security["is_cloud_provider"].(bool); ok {
-			securityInfo.IsCloudProvider = strconv.FormatBool(isCloudProvider)
+			securityInfo.IsCloudProvider = BoolToString(isCloudProvider)
 		}
 		if isProxy, ok := security["is_proxy"].(bool); ok {
-			securityInfo.IsProxy = strconv.FormatBool(isProxy)
+			securityInfo.IsProxy = BoolToString(isProxy)
 		}
 		if isRelay, ok := security["is_relay"].(bool); ok {
-			securityInfo.IsRelay = strconv.FormatBool(isRelay)
+			securityInfo.IsRelay = BoolToString(isRelay)
 		}
 		if isTor, ok := security["is_tor"].(bool); ok {
-			securityInfo.IsTor = strconv.FormatBool(isTor)
+			securityInfo.IsTor = BoolToString(isTor)
 		}
 		if isTorExit, ok := security["is_tor_exit"].(bool); ok {
-			securityInfo.IsTorExit = strconv.FormatBool(isTorExit)
+			securityInfo.IsTorExit = BoolToString(isTorExit)
 		}
 		if isVpn, ok := security["is_vpn"].(bool); ok {
-			securityInfo.IsVpn = strconv.FormatBool(isVpn)
+			securityInfo.IsVpn = BoolToString(isVpn)
 		}
 		if isAnonymous, ok := security["is_anonymous"].(bool); ok {
-			securityInfo.IsAnonymous = strconv.FormatBool(isAnonymous)
+			securityInfo.IsAnonymous = BoolToString(isAnonymous)
 		}
 		if isThreat, ok := security["is_threat"].(bool); ok {
-			securityInfo.IsThreat = strconv.FormatBool(isThreat)
+			securityInfo.IsThreat = BoolToString(isThreat)
 		}
 	}
 	return securityInfo

@@ -5,7 +5,6 @@ import (
 
 	"github.com/oneclickvirt/basics/model"
 )
-
 // chooseString 用于选择非空字符串
 func chooseString(src, dst string) string {
 	if src != "" {
@@ -14,7 +13,7 @@ func chooseString(src, dst string) string {
 	return dst
 }
 
-// CompareAndMergeIpInfo 用于比较和合并两个 IpInfo 结构体
+// CompareAndMergeIpInfo 用于比较和合并两个 IpInfo 结构体，非空则不替换
 func CompareAndMergeIpInfo(dst, src *model.IpInfo) (res *model.IpInfo, err error) {
 	if src == nil {
 		return nil, fmt.Errorf("Error merge IpInfo")
@@ -31,7 +30,7 @@ func CompareAndMergeIpInfo(dst, src *model.IpInfo) (res *model.IpInfo, err error
 	return dst, nil
 }
 
-// CompareAndMergeSecurityInfo 用于比较和合并两个 SecurityInfo 结构体
+// CompareAndMergeSecurityInfo 用于比较和合并两个 SecurityInfo 结构体，非空则不替换
 func CompareAndMergeSecurityInfo(dst, src *model.SecurityInfo) (res *model.SecurityInfo, err error) {
 	if src == nil {
 		return nil, fmt.Errorf("Error merge SecurityInfo")
@@ -50,5 +49,6 @@ func CompareAndMergeSecurityInfo(dst, src *model.SecurityInfo) (res *model.Secur
 	dst.IsVpn = chooseString(src.IsVpn, dst.IsVpn)
 	dst.IsAnonymous = chooseString(src.IsAnonymous, dst.IsAnonymous)
 	dst.IsThreat = chooseString(src.IsThreat, dst.IsThreat)
+	dst.Tag = "D"
 	return dst, nil
 }

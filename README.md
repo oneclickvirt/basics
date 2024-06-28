@@ -57,6 +57,13 @@ Usage of basics:
 
 ![图片](https://github.com/oneclickvirt/basics/assets/103393591/49404a18-1717-4875-b50d-26a930238248)
 
+## 卸载
+
+```
+rm -rf /root/basics
+rm -rf /usr/bin/basics
+```
+
 ## 在Golang中使用
 
 ```

@@ -1,8 +1,13 @@
 package model
 
-const BasicsVersion = "v0.0.3"
+const BasicsVersion = "v0.0.4"
 
 var EnableLoger bool
+
+var (
+	IsMacOS   bool
+	MacOSInfo []string
+)
 
 type IpInfo struct {
 	Ip      string

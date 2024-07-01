@@ -1,11 +1,13 @@
 package system
 
 import (
-	"github.com/shirou/gopsutil/mem"
 	"os"
 	"runtime"
 	"strconv"
 	"strings"
+
+	"github.com/oneclickvirt/basics/model"
+	"github.com/shirou/gopsutil/mem"
 )
 
 func getMemoryInfo() (string, string, string, string, string, string) {
@@ -39,6 +41,16 @@ func getMemoryInfo() (string, string, string, string, string, string) {
 					swapUsageStr = strconv.FormatFloat(swapUsage/(1024*1024), 'f', 2, 64) + " MB"
 				} else {
 					swapUsageStr = strconv.FormatFloat(swapUsage/(1024*1024*1024), 'f', 2, 64) + " GB"
+				}
+			}
+		}
+	}
+	// MAC需要额外获取信息进行判断
+	if model.IsMacOS {
+		if len(model.MacOSInfo) > 0 {
+			for _, line := range model.MacOSInfo {
+				if strings.Contains(line, "Memory") {
+					memoryTotalStr = strings.TrimSpace(strings.Split(line, ":")[1])
 				}
 			}
 		}

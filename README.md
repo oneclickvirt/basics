@@ -10,6 +10,7 @@ Include: https://github.com/oneclickvirt/gostun
 
 - [x] 以```-l```指定输出的语言类型，可指定```zh```或```en```，默认不指定时使用中文输出
 - [x] 使用```sysctl```获取CPU信息-特化适配freebsd、openbsd系统
+- [x] 适配```MacOS```与```Windows```系统的信息查询
 
 ## TODO
 

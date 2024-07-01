@@ -19,6 +19,10 @@ var (
 // GetSystemInfo 获取主机硬件信息
 func GetSystemInfo() *model.SystemInfo {
 	var ret = &model.SystemInfo{}
+	model.IsMacOS = isMacOS()
+	if model.IsMacOS {
+		getMacOSInfo()
+	}
 	// 系统信息查询
 	cpuType, ret.Uptime, ret.Platform, ret.Kernel, ret.Arch, ret.VmType, ret.NatType, ret.TimeZone, _ = getHostInfo()
 	// CPU信息查询
@@ -71,7 +75,9 @@ func CheckSystemInfo(language string) string {
 		} else {
 			res += "\n"
 		}
-		res += " Boot Path           : " + ret.BootPath + "\n"
+		if ret.BootPath != "" {
+			res += " Boot Path           : " + ret.BootPath + "\n"
+		}
 		res += " OS Release          : " + ret.Platform + " [" + ret.Arch + "] " + "\n"
 		if ret.Kernel != "" {
 			res += " Kernel              : " + ret.Kernel + "\n"
@@ -112,7 +118,9 @@ func CheckSystemInfo(language string) string {
 		} else {
 			res += "\n"
 		}
-		res += " 启动盘路径          : " + ret.BootPath + "\n"
+		if ret.BootPath != "" {
+			res += " 启动盘路径          : " + ret.BootPath + "\n"
+		}
 		res += " 系统                : " + ret.Platform + " [" + ret.Arch + "] " + "\n"
 		if ret.Kernel != "" {
 			res += " 内核                : " + ret.Kernel + "\n"

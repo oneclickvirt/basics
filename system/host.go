@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/libp2p/go-nat"
+	"github.com/oneclickvirt/basics/model"
 	"github.com/oneclickvirt/basics/system/utils"
 	"github.com/shirou/gopsutil/host"
 )
@@ -114,6 +115,16 @@ func getHostInfo() (string, string, string, string, string, string, string, stri
 	// windows 查询虚拟化类型 使用 wmic
 	if VmType == "" && runtime.GOOS == "windows" {
 		VmType = utils.CheckVMTypeWithWIMC()
+	}
+	// MAC需要额外获取信息进行判断
+	if model.IsMacOS {
+		if len(model.MacOSInfo) > 0 {
+			for _, line := range model.MacOSInfo {
+				if strings.Contains(line, "Model Name") {
+					VmType = strings.TrimSpace(strings.Split(line, ":")[1])
+				}
+			}
+		}
 	}
 	// 查询NAT类型
 	NatType = getNatType()

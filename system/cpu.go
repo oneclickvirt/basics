@@ -145,6 +145,26 @@ func getCpuInfo(ret *model.SystemInfo, cpuType string) (*model.SystemInfo, error
 			}
 		}
 	}
+	// 使用 /proc/device-tree 获取信息 - 特化适配嵌入式系统
+	deviceTreeContent, err := os.ReadFile("/proc/device-tree")
+	if err == nil {
+		ret.CpuModel = string(deviceTreeContent)
+	}
+	// 获取虚拟化架构
+	if runtime.GOOS == "windows" {
+		aesFeature = `HARDWARE\DESCRIPTION\System\CentralProcessor\0`
+		virtFeature = `HARDWARE\DESCRIPTION\System\CentralProcessor\0`
+		hypervFeature = `SYSTEM\CurrentControlSet\Control\Hypervisor\0`
+	} else if runtime.GOOS == "linux" {
+		aesFeature = "/proc/cpuinfo"
+		virtFeature = "/proc/cpuinfo"
+		hypervFeature = "/proc/cpuinfo"
+	}
+	ret.CpuAesNi, _ = checkCPUFeature(aesFeature, "aes")
+	ret.CpuVAH, st = checkCPUFeature(virtFeature, "vmx")
+	if !st {
+		ret.CpuVAH, _ = checkCPUFeature(hypervFeature, "hypervisor")
+	}
 	// 使用 sysctl 获取信息 - 特化适配 freebsd openbsd 系统
 	if checkSysctlVersion() {
 		if ret.CpuModel == "" {
@@ -241,25 +261,21 @@ func getCpuInfo(ret *model.SystemInfo, cpuType string) (*model.SystemInfo, error
 			}
 		}
 	}
-	// 使用 /proc/device-tree 获取信息 - 特化适配嵌入式系统
-	deviceTreeContent, err := os.ReadFile("/proc/device-tree")
-	if err == nil {
-		ret.CpuModel = string(deviceTreeContent)
-	}
-	// 获取虚拟化架构
-	if runtime.GOOS == "windows" {
-		aesFeature = `HARDWARE\DESCRIPTION\System\CentralProcessor\0`
-		virtFeature = `HARDWARE\DESCRIPTION\System\CentralProcessor\0`
-		hypervFeature = `SYSTEM\CurrentControlSet\Control\Hypervisor\0`
-	} else if runtime.GOOS == "linux" {
-		aesFeature = "/proc/cpuinfo"
-		virtFeature = "/proc/cpuinfo"
-		hypervFeature = "/proc/cpuinfo"
-	}
-	ret.CpuAesNi, _ = checkCPUFeature(aesFeature, "aes")
-	ret.CpuVAH, st = checkCPUFeature(virtFeature, "vmx")
-	if !st {
-		ret.CpuVAH, _ = checkCPUFeature(hypervFeature, "hypervisor")
+	// MAC需要额外获取信息进行判断
+	if model.IsMacOS {
+		if len(model.MacOSInfo) > 0 {
+			for _, line := range model.MacOSInfo {
+				if strings.Contains(line, "Chip") {
+					ret.CpuModel = strings.TrimSpace(strings.Split(line, ":")[1])
+				}
+				if strings.Contains(line, "Total Number of Cores") {
+					ret.CpuCores = strings.TrimSpace(strings.Split(line, ":")[1])
+				}
+				if strings.Contains(line, "Memory") {
+					ret.MemoryTotal = strings.TrimSpace(strings.Split(line, ":")[1])
+				}
+			}
+		}
 	}
 	return ret, nil
 }

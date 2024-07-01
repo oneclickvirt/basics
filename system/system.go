@@ -96,15 +96,15 @@ func CheckSystemInfo(language string) string {
 		res += " VM-x/AMD-V/Hyper-V  : " + ret.CpuVAH + "\n"
 		res += " 内存                : " + ret.MemoryUsage + " / " + ret.MemoryTotal + "\n"
 		if ret.VirtioBalloon != "" {
-			res += " Virtio Balloon      : " + ret.VirtioBalloon + "\n"
+			res += " 气球驱动           : " + ret.VirtioBalloon + "\n"
 		}
 		if ret.KSM != "" {
-			res += " KSM                 : " + ret.KSM + "\n"
+			res += " 内存同页合并        : " + ret.KSM + "\n"
 		}
 		if ret.SwapTotal == "" && ret.SwapUsage == "" {
-			res += " Swap                : [ no swap partition or swap file detected ]" + "\n"
+			res += " 虚拟内存 Swap       : [ no swap partition or swap file detected ]" + "\n"
 		} else if ret.SwapTotal != "" && ret.SwapUsage != "" {
-			res += " Swap                : " + ret.SwapUsage + " / " + ret.SwapTotal + "\n"
+			res += " 虚拟内存 Swap       : " + ret.SwapUsage + " / " + ret.SwapTotal + "\n"
 		}
 		res += " 硬盘空间            : " + ret.DiskUsage + " / " + ret.DiskTotal
 		if ret.Percentage != "" {

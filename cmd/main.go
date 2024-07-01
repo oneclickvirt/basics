@@ -13,13 +13,19 @@ import (
 )
 
 func main() {
-	var showVersion bool
+	var showVersion, help bool
 	var language string
 	basicsFlag := flag.NewFlagSet("basics", flag.ContinueOnError)
-	basicsFlag.BoolVar(&showVersion, "v", false, "show version")
+	basicsFlag.BoolVar(&help, "h", false, "Show help information")
+	basicsFlag.BoolVar(&showVersion, "v", false, "Show version")
 	basicsFlag.BoolVar(&model.EnableLoger, "e", false, "Enable logging")
-	basicsFlag.StringVar(&language, "l", "", "Language parameter (en or zh)")
+	basicsFlag.StringVar(&language, "l", "", "Set language (en or zh)")
 	basicsFlag.Parse(os.Args[1:])
+	if help {
+		fmt.Printf("Usage: %s [options]\n", os.Args[0])
+		basicsFlag.PrintDefaults()
+		return
+	}
 	if showVersion {
 		fmt.Println(model.BasicsVersion)
 		return

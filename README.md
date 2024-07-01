@@ -6,14 +6,14 @@
 
 Include: https://github.com/oneclickvirt/gostun
 
-## Information
+## 说明
 
-Use ```-l``` to specify the output language, currently ```en``` and ```zh``` are supported.
+- [x] 以```-l```指定输出的语言类型，可指定```zh```或```en```，默认不指定时使用中文输出
+- [x] 使用```sysctl```获取CPU信息-特化适配freebsd、openbsd系统
 
 ## TODO
 
 - [ ] 纯IPV6环境下使用cdn反代获取平台信息
-- [ ] 使用```sysctl```获取CPU信息-特化适配freebsd、openbsd系统
 - [ ] 检测GPU相关信息
 
 ## Usage

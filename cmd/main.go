@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/oneclickvirt/basics/model"
@@ -13,19 +14,18 @@ import (
 
 func main() {
 	var showVersion bool
-	flag.BoolVar(&showVersion, "v", false, "show version")
-	flag.BoolVar(&model.EnableLoger, "e", false, "Enable logging")
-	languagePtr := flag.String("l", "", "Language parameter (en or zh)")
-	flag.Parse()
+	var language string
+	basicsFlag := flag.NewFlagSet("basics", flag.ContinueOnError)
+	basicsFlag.BoolVar(&showVersion, "v", false, "show version")
+	basicsFlag.BoolVar(&model.EnableLoger, "e", false, "Enable logging")
+	basicsFlag.StringVar(&language, "l", "", "Language parameter (en or zh)")
+	basicsFlag.Parse(os.Args[1:])
 	if showVersion {
 		fmt.Println(model.BasicsVersion)
 		return
 	}
-	var language string
-	if *languagePtr == "" {
+	if language == "" {
 		language = "zh"
-	} else {
-		language = *languagePtr
 	}
 	language = strings.ToLower(language)
 	go func() {

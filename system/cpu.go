@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/oneclickvirt/basics/model"
 	"github.com/oneclickvirt/basics/system/utils"
@@ -59,7 +61,9 @@ func convertBytes(bytes int64) (string, int64) {
 func getCpuInfo(ret *model.SystemInfo, cpuType string) (*model.SystemInfo, error) {
 	var aesFeature, virtFeature, hypervFeature string
 	var st bool
-	ret.CpuCores = fmt.Sprintf("%d %s CPU(s)", runtime.NumCPU(), cpuType)
+	if runtime.NumCPU() != 0 {
+		ret.CpuCores = fmt.Sprintf("%d %s CPU(s)", runtime.NumCPU(), cpuType)
+	}
 	if runtime.GOOS == "windows" {
 		ci, err := cpu.Info()
 		if err != nil {
@@ -141,7 +145,100 @@ func getCpuInfo(ret *model.SystemInfo, cpuType string) (*model.SystemInfo, error
 			}
 		}
 	}
-	// TODO 使用 sysctl 获取信息 - 特化适配 freebsd openbsd 系统
+	// 使用 sysctl 获取信息 - 特化适配 freebsd openbsd 系统
+	if ret.CpuModel == "" {
+		cname, err := getSysctlValue("hw.model")
+		if err == nil && !strings.Contains(cname, "cannot") {
+			ret.CpuModel = cname
+			// 获取CPU频率
+			freq, err := getSysctlValue("dev.cpu.0.freq")
+			if err == nil && !strings.Contains(freq, "cannot") {
+				ret.CpuModel += " @" + freq + "MHz"
+			}
+		}
+	}
+	if ret.CpuCores == "" {
+		cores, err := getSysctlValue("hw.ncpu")
+		if err == nil && !strings.Contains(cores, "cannot") {
+			ret.CpuCores = fmt.Sprintf("%s %s CPU(s)", cores, cpuType)
+		}
+	}
+	if ret.CpuCache == "" {
+		// 获取CPU缓存配置
+		ccache, err := getSysctlValue("hw.cacheconfig")
+		if err == nil && !strings.Contains(ccache, "cannot") {
+			ret.CpuCache = strings.TrimSpace(strings.Split(ccache, ":")[1])
+		}
+	}
+	aesOut, err := exec.Command("sysctl", "-a").Output()
+	if ret.CpuAesNi == "Unsupported OS" || ret.CpuAesNi == "" {
+		// 检查AES指令集支持
+		var CPU_AES string
+		if err == nil {
+			aesReg := regexp.MustCompile(`crypto\.aesni\s*=\s*(\d)`)
+			aesMatch := aesReg.FindStringSubmatch(string(aesOut))
+			if len(aesMatch) > 1 {
+				CPU_AES = aesMatch[1]
+			}
+			if CPU_AES != "" {
+				ret.CpuAesNi = "✔️ Enabled"
+			} else {
+				ret.CpuAesNi = "❌ Disabled"
+			}
+		}
+	}
+	if ret.CpuVAH == "Unsupported OS" || ret.CpuVAH == "" {
+		// 检查虚拟化支持
+		var CPU_VIRT string
+		if err == nil {
+			virtReg := regexp.MustCompile(`(hw\.vmx|hw\.svm)\s*=\s*(\d)`)
+			virtMatch := virtReg.FindStringSubmatch(string(aesOut))
+			if len(virtMatch) > 2 {
+				CPU_VIRT = virtMatch[2]
+			}
+			if CPU_VIRT != "" {
+				ret.CpuVAH = "✔️ Enabled"
+			} else {
+				ret.CpuVAH = "❌ Disabled"
+			}
+		}
+	}
+	if ret.Uptime == "" {
+		// 获取系统运行时间
+		boottimeStr, err := getSysctlValue("kern.boottime")
+		if err == nil {
+			boottimeReg := regexp.MustCompile(`sec = (\d+), usec = (\d+)`)
+			boottimeMatch := boottimeReg.FindStringSubmatch(boottimeStr)
+			if len(boottimeMatch) > 1 {
+				boottime, err := strconv.ParseInt(boottimeMatch[1], 10, 64)
+				if err == nil {
+					uptime := time.Now().Unix() - boottime
+					days := uptime / 86400
+					hours := (uptime % 86400) / 3600
+					minutes := (uptime % 3600) / 60
+					ret.Uptime = fmt.Sprintf("%d days, %d hours, %d minutes", days, hours, minutes)
+				}
+			}
+		}
+	}
+	if ret.Load == "" {
+		// 获取系统负载
+		var load string
+		out, err := exec.Command("w").Output()
+		if err == nil {
+			loadFields := strings.Fields(string(out))
+			load = loadFields[len(loadFields)-3] + " " + loadFields[len(loadFields)-2] + " " + loadFields[len(loadFields)-1]
+		} else {
+			out, err = exec.Command("uptime").Output()
+			if err == nil {
+				fields := strings.Fields(string(out))
+				load = fields[len(fields)-3] + " " + fields[len(fields)-2] + " " + fields[len(fields)-1]
+			}
+		}
+		if load != "" {
+			ret.Load = load
+		}
+	}
 	// 使用 /proc/device-tree 获取信息 - 特化适配嵌入式系统
 	deviceTreeContent, err := os.ReadFile("/proc/device-tree")
 	if err == nil {

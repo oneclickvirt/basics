@@ -48,11 +48,12 @@ basics
 无环境依赖，理论上适配所有系统和主流架构，更多架构请查看 https://github.com/oneclickvirt/basics/releases/tag/output
 
 ```
-Usage of basics:
+Usage: basics [options]
   -e    Enable logging
+  -h    Show help information
   -l string
-        Language parameter (en or zh)
-  -v    show version
+        Set language (en or zh)
+  -v    Show version
 ```
 
 ![图片](https://github.com/oneclickvirt/basics/assets/103393591/634064de-17a6-485f-b401-dc3a159a18c4)

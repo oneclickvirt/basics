@@ -96,7 +96,7 @@ func CheckSystemInfo(language string) string {
 		res += " VM-x/AMD-V/Hyper-V  : " + ret.CpuVAH + "\n"
 		res += " 内存                : " + ret.MemoryUsage + " / " + ret.MemoryTotal + "\n"
 		if ret.VirtioBalloon != "" {
-			res += " 气球驱动           : " + ret.VirtioBalloon + "\n"
+			res += " 气球驱动            : " + ret.VirtioBalloon + "\n"
 		}
 		if ret.KSM != "" {
 			res += " 内存同页合并        : " + ret.KSM + "\n"

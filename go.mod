@@ -6,7 +6,7 @@ require (
 	github.com/imroc/req/v3 v3.43.7
 	github.com/libp2p/go-nat v0.2.0
 	github.com/oneclickvirt/defaultset v0.0.2-20240624082446
-	github.com/oneclickvirt/gostun v0.0.2-20240625025941
+	github.com/oneclickvirt/gostun v0.0.3-20240702054621
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/yusufpapurcu/wmi v1.2.4
 	golang.org/x/sys v0.21.0

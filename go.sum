@@ -38,8 +38,8 @@ github.com/libp2p/go-netroute v0.2.1 h1:V8kVrpD8GK0Riv15/7VN6RbUQ3URNZVosw7H2v9t
 github.com/libp2p/go-netroute v0.2.1/go.mod h1:hraioZr0fhBjG0ZRXJJ6Zj2IVEVNx6tDTFQfSmcq7mQ=
 github.com/oneclickvirt/defaultset v0.0.2-20240624082446 h1:5Pg3mK/u/vQvSz7anu0nxzrNdELi/AcDAU1mMsmPzyc=
 github.com/oneclickvirt/defaultset v0.0.2-20240624082446/go.mod h1:e9Jt4tf2sbemCtc84/XgKcHy9EZ2jkc5x2sW1NiJS+E=
-github.com/oneclickvirt/gostun v0.0.2-20240625025941 h1:h+ZL8jkjXR6QE0qEX34FjWTv89+lNj2fEkWx5Agpgzc=
-github.com/oneclickvirt/gostun v0.0.2-20240625025941/go.mod h1:f7DPEXAxbmwXSW33dbxtb0/KzqvOBWhTs2Or5xBerQA=
+github.com/oneclickvirt/gostun v0.0.3-20240702054621 h1:IE89eEYV9TJbF94SakQDAxTLIaqX+Tb6ZhJ/CCIP+90=
+github.com/oneclickvirt/gostun v0.0.3-20240702054621/go.mod h1:f7DPEXAxbmwXSW33dbxtb0/KzqvOBWhTs2Or5xBerQA=
 github.com/onsi/ginkgo/v2 v2.19.0 h1:9Cnnf7UHo57Hy3k6/m5k3dRfGTMXGvxhHFvkDTCTpvA=
 github.com/onsi/ginkgo/v2 v2.19.0/go.mod h1:rlwLi9PilAFJ8jCg9UE1QP6VBpd6/xj3SRC0d6TU0To=
 github.com/onsi/gomega v1.33.1 h1:dsYjIxxSR755MDmKVsaFQTE22ChNBcuuTWgkUDSubOk=

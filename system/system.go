@@ -19,8 +19,7 @@ var (
 // GetSystemInfo 获取主机硬件信息
 func GetSystemInfo() *model.SystemInfo {
 	var ret = &model.SystemInfo{}
-	model.IsMacOS = isMacOS()
-	if model.IsMacOS {
+	if runtime.GOOS == "darwin" {
 		getMacOSInfo()
 	}
 	// 系统信息查询

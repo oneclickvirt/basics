@@ -262,7 +262,7 @@ func getCpuInfo(ret *model.SystemInfo, cpuType string) (*model.SystemInfo, error
 		}
 	}
 	// MAC需要额外获取信息进行判断
-	if model.IsMacOS {
+	if runtime.GOOS == "darwin" {
 		if len(model.MacOSInfo) > 0 {
 			for _, line := range model.MacOSInfo {
 				if strings.Contains(line, "Chip") {

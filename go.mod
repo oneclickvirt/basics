@@ -35,6 +35,7 @@ require (
 	github.com/quic-go/qpack v0.4.0 // indirect
 	github.com/quic-go/quic-go v0.45.1 // indirect
 	github.com/refraction-networking/utls v1.6.6 // indirect
+	github.com/stretchr/testify v1.9.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.14 // indirect
 	github.com/tklauser/numcpus v0.8.0 // indirect
 	go.uber.org/mock v0.4.0 // indirect

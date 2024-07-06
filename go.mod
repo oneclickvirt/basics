@@ -7,7 +7,7 @@ require (
 	github.com/libp2p/go-nat v0.2.0
 	github.com/oneclickvirt/defaultset v0.0.2-20240624082446
 	github.com/oneclickvirt/gostun v0.0.3-20240702054621
-	github.com/shirou/gopsutil v3.21.11+incompatible
+	github.com/shirou/gopsutil/v4 v4.24.5
 	github.com/yusufpapurcu/wmi v1.2.4
 	golang.org/x/sys v0.21.0
 )
@@ -26,16 +26,18 @@ require (
 	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/koron/go-ssdp v0.0.4 // indirect
 	github.com/libp2p/go-netroute v0.2.1 // indirect
+	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/onsi/ginkgo/v2 v2.19.0 // indirect
 	github.com/pion/dtls/v2 v2.2.7 // indirect
 	github.com/pion/logging v0.2.2 // indirect
 	github.com/pion/stun/v2 v2.0.0 // indirect
 	github.com/pion/transport/v2 v2.2.1 // indirect
 	github.com/pion/transport/v3 v3.0.1 // indirect
+	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/quic-go/qpack v0.4.0 // indirect
 	github.com/quic-go/quic-go v0.45.1 // indirect
 	github.com/refraction-networking/utls v1.6.6 // indirect
-	github.com/stretchr/testify v1.9.0 // indirect
+	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/tklauser/go-sysconf v0.3.14 // indirect
 	github.com/tklauser/numcpus v0.8.0 // indirect
 	go.uber.org/mock v0.4.0 // indirect

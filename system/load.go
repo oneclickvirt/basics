@@ -3,7 +3,7 @@ package system
 import (
 	"bufio"
 	"github.com/oneclickvirt/basics/system/utils"
-	"github.com/shirou/gopsutil/load"
+	"github.com/shirou/gopsutil/v4/load"
 	"os"
 	"runtime"
 	"strconv"

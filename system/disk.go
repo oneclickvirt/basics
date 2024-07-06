@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/shirou/gopsutil/disk"
+	"github.com/shirou/gopsutil/v4/disk"
 )
 
 // getDiskInfo 获取硬盘信息

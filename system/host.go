@@ -12,7 +12,7 @@ import (
 	"github.com/libp2p/go-nat"
 	"github.com/oneclickvirt/basics/model"
 	"github.com/oneclickvirt/basics/system/utils"
-	"github.com/shirou/gopsutil/host"
+	"github.com/shirou/gopsutil/v4/host"
 )
 
 func getVmTypeFromSDV(path string) string {

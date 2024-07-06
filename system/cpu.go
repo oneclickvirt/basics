@@ -13,7 +13,7 @@ import (
 
 	"github.com/oneclickvirt/basics/model"
 	"github.com/oneclickvirt/basics/system/utils"
-	"github.com/shirou/gopsutil/cpu"
+	"github.com/shirou/gopsutil/v4/cpu"
 )
 
 func checkCPUFeatureLinux(filename string, feature string) (string, bool) {

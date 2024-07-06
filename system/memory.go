@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/oneclickvirt/basics/model"
-	"github.com/shirou/gopsutil/mem"
+	"github.com/shirou/gopsutil/v4/mem"
 )
 
 func getMemoryInfo() (string, string, string, string, string, string) {

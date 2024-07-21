@@ -15,6 +15,7 @@ Include: https://github.com/oneclickvirt/gostun
 ## TODO
 
 - [ ] 部分Windows10系统下打勾打叉编码错误显示，需要判断是Win时使用Y/N显示而不是勾叉
+- [ ] 需要特化对LXC架构的识别，目前似乎有的机器检测不到
 - [ ] FreeBSD下获取不到CPU的型号，待修复
 - [ ] 纯IPV6环境下使用cdn反代获取平台信息
 - [ ] 检测GPU相关信息，可参考[ghw](https://github.com/jaypipes/ghw)

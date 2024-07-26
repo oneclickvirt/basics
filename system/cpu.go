@@ -176,7 +176,6 @@ func getCpuInfo(ret *model.SystemInfo, cpuType string) (*model.SystemInfo, error
 	if exit {
 		if ret.CpuModel == "" || len(ret.CpuModel) < 3 {
 			cname, err := getSysctlValue(path, "hw.model")
-			fmt.Println(cname)
 			if err == nil && !strings.Contains(cname, "cannot") {
 				ret.CpuModel = cname
 				// 获取CPU频率
@@ -195,7 +194,6 @@ func getCpuInfo(ret *model.SystemInfo, cpuType string) (*model.SystemInfo, error
 		if ret.CpuCache == "" {
 			// 获取CPU缓存配置
 			ccache, err := getSysctlValue(path, "hw.cacheconfig")
-			fmt.Println(ccache)
 			if err == nil && !strings.Contains(ccache, "cannot") {
 				ret.CpuCache = strings.TrimSpace(strings.Split(ccache, ":")[1])
 			}
@@ -216,7 +214,6 @@ func getCpuInfo(ret *model.SystemInfo, cpuType string) (*model.SystemInfo, error
 						CPU_AES = aesMatch[1]
 					}
 				}
-				fmt.Println(CPU_AES)
 				if CPU_AES != "" {
 					if runtime.GOOS == "windows" {
 						ret.CpuAesNi = "[Y] Enabled"

@@ -16,7 +16,7 @@ import (
 )
 
 func getVmTypeFromSDV(path string) string {
-	cmd := exec.Command(fmt.Sprintf("%s/systemd-detect-virt", path))
+	cmd := exec.Command(path)
 	output, err := cmd.Output()
 	if err == nil {
 		switch strings.TrimSpace(strings.ReplaceAll(string(output), "\n", "")) {
@@ -61,6 +61,72 @@ func getVmTypeFromSDV(path string) string {
 	return ""
 }
 
+func getVmTypeFromDMI(path string) string {
+	cmd := exec.Command(path, "-t", "system")
+	output, err := cmd.Output()
+	if err == nil && strings.Contains(strings.ToLower(string(output)), "family") {
+		var familyLine string
+		for _, line := range strings.Split(strings.ToLower(string(output)), "\n") {
+			if strings.Contains(line, "family") {
+				familyLine = strings.ReplaceAll(line, "family", "")
+				break
+			}
+		}
+		switch strings.TrimSpace(strings.ReplaceAll(familyLine, ":", "")) {
+		case "kvm":
+			return "KVM"
+		case "xen":
+			return "Xen Hypervisor"
+		case "microsoft":
+			return "Microsoft Hyper-V"
+		case "vmware":
+			return "VMware"
+		case "oracle":
+			return "Oracle VirtualBox"
+		case "parallels":
+			return "Parallels"
+		case "qemu":
+			return "QEMU"
+		case "amazon":
+			return "Amazon Virtualization"
+		case "docker":
+			return "Docker"
+		case "openvz":
+			return "OpenVZ (Virutozzo)"
+		case "lxc":
+			return "LXC"
+		case "lxc-libvirt":
+			return "LXC (Based on libvirt)"
+		case "uml":
+			return "User-mode Linux"
+		case "systemd-nspawn":
+			return "Systemd nspawn"
+		case "bochs":
+			return "BOCHS"
+		case "rkt":
+			return "RKT"
+		case "zvm":
+			return "S390 Z/VM"
+		case "none":
+			return "Dedicated"
+		}
+		var manuFacturer string
+		for _, line := range strings.Split(strings.ToLower(string(output)), "\n") {
+			if strings.Contains(line, "manufacturer") {
+				tempL := strings.Split(line, ":")
+				if len(tempL) == 2 {
+					manuFacturer = strings.TrimSpace(tempL[1])
+					break
+				}
+			}
+		}
+		if manuFacturer != "" {
+			return manuFacturer
+		}
+	}
+	return ""
+}
+
 func getHostInfo() (string, string, string, string, string, string, string, string, error) {
 	var Platform, Kernal, Arch, VmType, NatType, CurrentTimeZone string
 	var cachedBootTime time.Time
@@ -85,6 +151,10 @@ func getHostInfo() (string, string, string, string, string, string, string, stri
 			path, exit := utils.GetPATH("systemd-detect-virt")
 			if exit {
 				VmType = getVmTypeFromSDV(path)
+			}
+			path, exit = utils.GetPATH("dmidecode")
+			if exit {
+				VmType = getVmTypeFromDMI(path)
 			}
 			if VmType == "" || VmType == "KVM" || VmType == "Dedicated" {
 				_, err := os.Stat("/.dockerenv")

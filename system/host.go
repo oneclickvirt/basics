@@ -86,7 +86,7 @@ func getHostInfo() (string, string, string, string, string, string, string, stri
 			if exit {
 				VmType = getVmTypeFromSDV(path)
 			}
-			if VmType == "" {
+			if VmType == "" || VmType == "KVM" || VmType == "Dedicated" {
 				_, err := os.Stat("/.dockerenv")
 				if os.IsExist(err) {
 					VmType = "Docker"

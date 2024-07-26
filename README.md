@@ -11,15 +11,14 @@ Include: https://github.com/oneclickvirt/gostun
 - [x] 以```-l```指定输出的语言类型，可指定```zh```或```en```，默认不指定时使用中文输出
 - [x] 使用```sysctl```获取CPU信息-特化适配freebsd、openbsd系统
 - [x] 适配```MacOS```与```Windows```系统的信息查询
+- [x] 部分Windows10系统下打勾打叉编码错误显示，已判断是Win时使用Y/N显示而不是勾叉
 
 ## TODO
 
-- [ ] 部分Windows10系统下打勾打叉编码错误显示，需要判断是Win时使用Y/N显示而不是勾叉
-- [ ] 需要特化对LXC架构的识别，目前似乎有的机器检测不到
 - [ ] FreeBSD下获取不到CPU的型号，待修复
-- [ ] 纯IPV6环境下使用cdn反代获取平台信息
 - [ ] 检测GPU相关信息，可参考[ghw](https://github.com/jaypipes/ghw)
 - [ ] CPUCache的信息需要矫正
+- [ ] 纯IPV6环境下使用cdn反代获取平台信息
 
 ## Usage
 

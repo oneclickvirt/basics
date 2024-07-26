@@ -15,7 +15,6 @@ Include: https://github.com/oneclickvirt/gostun
 
 ## TODO
 
-- [ ] FreeBSD下获取不到CPU的型号，待修复
 - [ ] 检测GPU相关信息，可参考[ghw](https://github.com/jaypipes/ghw)
 - [ ] CPUCache的信息需要矫正
 - [ ] 纯IPV6环境下使用cdn反代获取平台信息

@@ -6,7 +6,7 @@ import (
 )
 
 func checkSysctlVersion() bool {
-	out, err := exec.Command("sysctl", "--version").Output()
+	out, err := exec.Command("sysctl", "-h").Output()
 	if err != nil {
 		return false
 	}

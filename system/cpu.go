@@ -173,8 +173,9 @@ func getCpuInfo(ret *model.SystemInfo, cpuType string) (*model.SystemInfo, error
 	}
 	// 使用 sysctl 获取信息 - 特化适配 freebsd openbsd 系统
 	path, exit := utils.GetPATH("sysctl")
+	fmt.Println("sysctl path:", path)
 	if exit && checkSysctlVersion(path) {
-		if ret.CpuModel == "" {
+		if ret.CpuModel == "" || len(ret.CpuModel) < 3 {
 			cname, err := getSysctlValue(path, "hw.model")
 			if err == nil && !strings.Contains(cname, "cannot") {
 				ret.CpuModel = cname
@@ -207,6 +208,12 @@ func getCpuInfo(ret *model.SystemInfo, cpuType string) (*model.SystemInfo, error
 				aesMatch := aesReg.FindStringSubmatch(string(aesOut))
 				if len(aesMatch) > 1 {
 					CPU_AES = aesMatch[1]
+				} else {
+					aesReg := regexp.MustCompile(`dev\.aesni\.0\.%desc:\s*(.+)`)
+					aesMatch := aesReg.FindStringSubmatch(string(aesOut))
+					if len(aesMatch) > 1 {
+						CPU_AES = aesMatch[1]
+					}
 				}
 				if CPU_AES != "" {
 					if runtime.GOOS == "windows" {

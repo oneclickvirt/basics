@@ -172,32 +172,33 @@ func getCpuInfo(ret *model.SystemInfo, cpuType string) (*model.SystemInfo, error
 		ret.CpuVAH, _ = checkCPUFeature(hypervFeature, "hypervisor")
 	}
 	// 使用 sysctl 获取信息 - 特化适配 freebsd openbsd 系统
-	if checkSysctlVersion() {
+	path, exit := utils.GetPATH("sysctl")
+	if exit && checkSysctlVersion(path) {
 		if ret.CpuModel == "" {
-			cname, err := getSysctlValue("hw.model")
+			cname, err := getSysctlValue(path, "hw.model")
 			if err == nil && !strings.Contains(cname, "cannot") {
 				ret.CpuModel = cname
 				// 获取CPU频率
-				freq, err := getSysctlValue("dev.cpu.0.freq")
+				freq, err := getSysctlValue(path, "dev.cpu.0.freq")
 				if err == nil && !strings.Contains(freq, "cannot") {
 					ret.CpuModel += " @" + freq + "MHz"
 				}
 			}
 		}
 		if ret.CpuCores == "" {
-			cores, err := getSysctlValue("hw.ncpu")
+			cores, err := getSysctlValue(path, "hw.ncpu")
 			if err == nil && !strings.Contains(cores, "cannot") {
 				ret.CpuCores = fmt.Sprintf("%s %s CPU(s)", cores, cpuType)
 			}
 		}
 		if ret.CpuCache == "" {
 			// 获取CPU缓存配置
-			ccache, err := getSysctlValue("hw.cacheconfig")
+			ccache, err := getSysctlValue(path, "hw.cacheconfig")
 			if err == nil && !strings.Contains(ccache, "cannot") {
 				ret.CpuCache = strings.TrimSpace(strings.Split(ccache, ":")[1])
 			}
 		}
-		aesOut, err := exec.Command("sysctl", "-a").Output()
+		aesOut, err := exec.Command(path, "-a").Output()
 		if ret.CpuAesNi == "Unsupported OS" || ret.CpuAesNi == "" {
 			// 检查AES指令集支持
 			var CPU_AES string
@@ -234,7 +235,7 @@ func getCpuInfo(ret *model.SystemInfo, cpuType string) (*model.SystemInfo, error
 				if CPU_VIRT != "" {
 					if runtime.GOOS == "windows" {
 						ret.CpuVAH = "[Y] Enabled"
-					} else {	
+					} else {
 						ret.CpuVAH = "✔️ Enabled"
 					}
 				} else {
@@ -248,7 +249,7 @@ func getCpuInfo(ret *model.SystemInfo, cpuType string) (*model.SystemInfo, error
 		}
 		if ret.Uptime == "" {
 			// 获取系统运行时间
-			boottimeStr, err := getSysctlValue("kern.boottime")
+			boottimeStr, err := getSysctlValue(path, "kern.boottime")
 			if err == nil {
 				boottimeReg := regexp.MustCompile(`sec = (\d+), usec = (\d+)`)
 				boottimeMatch := boottimeReg.FindStringSubmatch(boottimeStr)
@@ -264,23 +265,23 @@ func getCpuInfo(ret *model.SystemInfo, cpuType string) (*model.SystemInfo, error
 				}
 			}
 		}
-		if ret.Load == "" {
-			// 获取系统负载
-			var load string
-			out, err := exec.Command("w").Output()
+	}
+	if ret.Load == "" {
+		// 获取系统负载
+		var load string
+		out, err := exec.Command("w").Output()
+		if err == nil {
+			loadFields := strings.Fields(string(out))
+			load = loadFields[len(loadFields)-3] + " " + loadFields[len(loadFields)-2] + " " + loadFields[len(loadFields)-1]
+		} else {
+			out, err = exec.Command("uptime").Output()
 			if err == nil {
-				loadFields := strings.Fields(string(out))
-				load = loadFields[len(loadFields)-3] + " " + loadFields[len(loadFields)-2] + " " + loadFields[len(loadFields)-1]
-			} else {
-				out, err = exec.Command("uptime").Output()
-				if err == nil {
-					fields := strings.Fields(string(out))
-					load = fields[len(fields)-3] + " " + fields[len(fields)-2] + " " + fields[len(fields)-1]
-				}
+				fields := strings.Fields(string(out))
+				load = fields[len(fields)-3] + " " + fields[len(fields)-2] + " " + fields[len(fields)-1]
 			}
-			if load != "" {
-				ret.Load = load
-			}
+		}
+		if load != "" {
+			ret.Load = load
 		}
 	}
 	// MAC需要额外获取信息进行判断

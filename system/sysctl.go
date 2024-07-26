@@ -5,8 +5,8 @@ import (
 	"strings"
 )
 
-func checkSysctlVersion() bool {
-	out, err := exec.Command("sysctl", "-h").Output()
+func checkSysctlVersion(path string) bool {
+	out, err := exec.Command(path, "-h").Output()
 	if err != nil {
 		return false
 	}
@@ -16,8 +16,8 @@ func checkSysctlVersion() bool {
 	return true
 }
 
-func getSysctlValue(key string) (string, error) {
-	out, err := exec.Command("sysctl", "-n", key).Output()
+func getSysctlValue(path, key string) (string, error) {
+	out, err := exec.Command(path, "-n", key).Output()
 	if err != nil {
 		return "", err
 	}

@@ -13,38 +13,100 @@ import (
 
 // GetCpuCache 查询CPU三缓
 func GetCpuCache() string {
-	var processors []model.Win32_Processor
-	err := wmi.Query("SELECT L2CacheSize, L3CacheSize FROM Win32_Processor", &processors)
+	var L1CacheSizeStr, L2CacheSizeStr, L3CacheSizeStr string
+	var cacheMemories []model.Win32CacheMemory
+	var sizeStrList []string
+	// Get-WmiObject -Query "Select * from Win32_CacheMemory"
+	err := wmi.Query("SELECT * FROM Win32_CacheMemory", &cacheMemories)
 	if err == nil {
-		if len(processors) > 0 {
-			L1CacheSizeStr := "null"
-			L2CacheSize := processors[0].L2CacheSize
-			L3CacheSize := processors[0].L3CacheSize
-			var L2CacheSizeStr, L3CacheSizeStr string
-			if L2CacheSize >= 1024*1024 {
-				L2CacheSizeStr = fmt.Sprintf("%.2f GB", float64(L2CacheSize)/(1024*1024))
-			} else if L2CacheSize >= 1024 {
-				L2CacheSizeStr = fmt.Sprintf("%.2f MB", float64(L2CacheSize)/1024)
+		for _, cache := range cacheMemories {
+			var sizeStr string
+			if cache.InstalledSize >= 1024*1024 {
+				sizeStr = fmt.Sprintf("%.2f GB", float64(cache.InstalledSize)/(1024*1024))
+			} else if cache.InstalledSize >= 1024 {
+				sizeStr = fmt.Sprintf("%.2f MB", float64(cache.InstalledSize)/1024)
 			} else {
-				L2CacheSizeStr = fmt.Sprintf("%d KB", L2CacheSize)
+				sizeStr = fmt.Sprintf("%d KB", cache.InstalledSize)
 			}
-			if L3CacheSize >= 1024*1024 {
-				L3CacheSizeStr = fmt.Sprintf("%.2f GB", float64(L3CacheSize)/(1024*1024))
-			} else if L3CacheSize >= 1024 {
-				L3CacheSizeStr = fmt.Sprintf("%.2f MB", float64(L3CacheSize)/1024)
-			} else {
-				L3CacheSizeStr = fmt.Sprintf("%d KB", L3CacheSize)
+			sizeStrList = append(sizeStrList, sizeStr)
+		}
+		if len(sizeStrList) > 0 {
+			L1CacheSizeStr = sizeStrList[0]
+		}
+		if len(sizeStrList) > 1 {
+			L2CacheSizeStr = sizeStrList[1]
+		}
+		if len(sizeStrList) > 2 {
+			L3CacheSizeStr = sizeStrList[2]
+		}
+	}
+	if L1CacheSizeStr == "" || L2CacheSizeStr == "" || L3CacheSizeStr == "" {
+		var processors []model.Win32_Processor
+		err = wmi.Query("SELECT L2CacheSize, L3CacheSize FROM Win32_Processor", &processors)
+		if err == nil {
+			if len(processors) > 0 {
+				if L1CacheSizeStr == "" {
+					L1CacheSizeStr = "null"
+				}
+				if L2CacheSizeStr == "" {
+					L2CacheSize := processors[0].L2CacheSize
+					if L2CacheSize >= 1024*1024 {
+						L2CacheSizeStr = fmt.Sprintf("%.2f GB", float64(L2CacheSize)/(1024*1024))
+					} else if L2CacheSize >= 1024 {
+						L2CacheSizeStr = fmt.Sprintf("%.2f MB", float64(L2CacheSize)/1024)
+					} else {
+						L2CacheSizeStr = fmt.Sprintf("%d KB", L2CacheSize)
+					}
+				}
+				if L3CacheSizeStr == "" {
+					L3CacheSize := processors[0].L3CacheSize
+					if L3CacheSize >= 1024*1024 {
+						L3CacheSizeStr = fmt.Sprintf("%.2f GB", float64(L3CacheSize)/(1024*1024))
+					} else if L3CacheSize >= 1024 {
+						L3CacheSizeStr = fmt.Sprintf("%.2f MB", float64(L3CacheSize)/1024)
+					} else {
+						L3CacheSizeStr = fmt.Sprintf("%d KB", L3CacheSize)
+					}
+				}
+				return fmt.Sprintf("L1: %s / L2: %s / L3: %s", L1CacheSizeStr, L2CacheSizeStr, L3CacheSizeStr)
 			}
-			return fmt.Sprintf("L1: %s / L2: %s / L3: %s", L1CacheSizeStr, L2CacheSizeStr, L3CacheSizeStr)
-		} else {
-			return ""
 		}
 	} else {
-		return ""
+		return fmt.Sprintf("L1: %s / L2: %s / L3: %s", L1CacheSizeStr, L2CacheSizeStr, L3CacheSizeStr)
 	}
+	return ""
 }
 
 func CheckCPUFeatureWindows(subkey string, value string) (string, bool) {
+	// 从WMI获取信息
+	if value == "hypervisor" {
+		var dst []model.Win32_VFE
+		// wmic cpu get VirtualizationFirmwareEnabled
+		query := wmi.CreateQuery(&dst, "")
+		err := wmi.Query(query, &dst)
+		if err == nil {
+			var body string
+			for _, processor := range dst {
+				body += fmt.Sprintf("%v \n", processor.VirtualizationFirmwareEnabled)
+			}
+			body = strings.ToLower(body)
+			// fmt.Println(body)
+			if strings.Contains(body, "true") {
+				if runtime.GOOS == "windows" {
+					return "[Y] Enabled", true
+				} else {
+					return "✔️ Enabled", true
+				}
+			} else if strings.Contains(body, "false") {
+				if runtime.GOOS == "windows" {
+					return "[N] Disabled", false
+				} else {
+					return "❌ Disabled", false
+				}
+			}
+		}
+	}
+	// 从注册表获取信息
 	k, err := registry.OpenKey(registry.LOCAL_MACHINE, subkey, registry.READ)
 	if err != nil {
 		if runtime.GOOS == "windows" {

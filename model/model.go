@@ -140,6 +140,22 @@ type Win32_Processor struct {
 	L3CacheSize uint32
 }
 
+type Win32CacheMemory struct {
+	BlockSize      uint32
+	CacheSpeed     uint32
+	CacheType      uint32
+	DeviceID       string
+	InstalledSize  uint32
+	Level          uint32
+	MaxCacheSize   uint32
+	NumberOfBlocks uint32
+	Status         string
+}
+
+type Win32_VFE struct {
+    VirtualizationFirmwareEnabled bool
+}
+
 type Win32_ComputerSystem struct {
 	SystemType string
 }

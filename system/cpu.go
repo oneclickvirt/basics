@@ -24,8 +24,14 @@ func checkCPUFeatureLinux(filename string, feature string) (string, bool) {
 	lines := strings.Split(string(content), "\n")
 	for _, line := range lines {
 		if strings.Contains(line, feature) {
+			if runtime.GOOS == "windows" {
+				return "[Y] Enabled", true
+			}
 			return "✔️ Enabled", true
 		}
+	}
+	if runtime.GOOS == "windows" {
+		return "[N] Disabled", false
 	}
 	return "❌ Disabled", false
 }
@@ -202,9 +208,17 @@ func getCpuInfo(ret *model.SystemInfo, cpuType string) (*model.SystemInfo, error
 					CPU_AES = aesMatch[1]
 				}
 				if CPU_AES != "" {
-					ret.CpuAesNi = "✔️ Enabled"
+					if runtime.GOOS == "windows" {
+						ret.CpuAesNi = "[Y] Enabled"
+					} else {
+						ret.CpuAesNi = "✔️ Enabled"
+					}
 				} else {
-					ret.CpuAesNi = "❌ Disabled"
+					if runtime.GOOS == "windows" {
+						ret.CpuAesNi = "[N] Disabled"
+					} else {
+						ret.CpuAesNi = "❌ Disabled"
+					}
 				}
 			}
 		}
@@ -218,9 +232,17 @@ func getCpuInfo(ret *model.SystemInfo, cpuType string) (*model.SystemInfo, error
 					CPU_VIRT = virtMatch[2]
 				}
 				if CPU_VIRT != "" {
-					ret.CpuVAH = "✔️ Enabled"
+					if runtime.GOOS == "windows" {
+						ret.CpuVAH = "[Y] Enabled"
+					} else {	
+						ret.CpuVAH = "✔️ Enabled"
+					}
 				} else {
-					ret.CpuVAH = "❌ Disabled"
+					if runtime.GOOS == "windows" {
+						ret.CpuVAH = "[N] Disabled"
+					} else {
+						ret.CpuVAH = "❌ Disabled"
+					}
 				}
 			}
 		}

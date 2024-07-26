@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"math"
+	"runtime"
 	"strings"
 
 	"github.com/oneclickvirt/basics/model"
@@ -46,17 +47,33 @@ func GetCpuCache() string {
 func CheckCPUFeatureWindows(subkey string, value string) (string, bool) {
 	k, err := registry.OpenKey(registry.LOCAL_MACHINE, subkey, registry.READ)
 	if err != nil {
-		return "❌ Disabled", false
+		if runtime.GOOS == "windows" {
+			return "[N] Disabled", false
+		} else {
+			return "❌ Disabled", false
+		}
 	}
 	defer k.Close()
 	val, _, err := k.GetStringValue(value)
 	if err != nil {
-		return "❌ Disabled", false
+		if runtime.GOOS == "windows" {
+			return "[N] Disabled", false
+		} else {
+			return "❌ Disabled", false
+		}
 	}
 	if strings.Contains(val, "1") {
-		return "✔️ Enabled", true
+		if runtime.GOOS == "windows" {
+			return "[Y] Enabled", true
+		} else {
+			return "✔️ Enabled", true
+		}
 	}
-	return "❌ Disabled", false
+	if runtime.GOOS == "windows" {
+		return "[N] Disabled", false
+	} else {
+		return "❌ Disabled", false
+	}
 }
 
 func CheckVMTypeWithWIMC() string {

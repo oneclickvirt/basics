@@ -80,7 +80,11 @@ func getMemoryInfo() (string, string, string, string, string, string) {
 	virtioBalloon, err := os.ReadFile("/proc/modules")
 	if err == nil {
 		if strings.Contains(string(virtioBalloon), "virtio_balloon") {
-			virtioBalloonStatus = "✔️ Enabled"
+			if runtime.GOOS == "windows" {
+				virtioBalloonStatus = "[Y] Enabled"
+			} else {
+				virtioBalloonStatus = "✔️ Enabled"
+			}
 		} else {
 			virtioBalloonStatus = ""
 		}
@@ -90,7 +94,11 @@ func getMemoryInfo() (string, string, string, string, string, string) {
 	ksmStatus, err := os.ReadFile("/sys/kernel/mm/ksm/run")
 	if err == nil {
 		if strings.Contains(string(ksmStatus), "1") {
-			KernelSamepageMerging = "✔️ Enabled"
+			if runtime.GOOS == "windows" {
+				KernelSamepageMerging = "[Y] Enabled"
+			} else {
+				KernelSamepageMerging = "✔️ Enabled"
+			}
 		} else {
 			KernelSamepageMerging = ""
 		}

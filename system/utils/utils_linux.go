@@ -107,7 +107,7 @@ func GetPATH(key string) (string, bool) {
 		filePath := filepath.Join(dir, key)
 		// 检查文件是否存在且可执行
 		if fileInfo, err := os.Stat(filePath); err == nil && fileInfo.Mode().IsRegular() && (fileInfo.Mode()&0111 != 0) {
-			return dir, true
+			return dir + "/" + key, true
 		}
 	}
 	return "", false

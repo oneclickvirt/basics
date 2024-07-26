@@ -173,7 +173,6 @@ func getCpuInfo(ret *model.SystemInfo, cpuType string) (*model.SystemInfo, error
 	}
 	// 使用 sysctl 获取信息 - 特化适配 freebsd openbsd 系统
 	path, exit := utils.GetPATH("sysctl")
-	fmt.Println("sysctl path:", path)
 	if exit && checkSysctlVersion(path) {
 		if ret.CpuModel == "" || len(ret.CpuModel) < 3 {
 			cname, err := getSysctlValue(path, "hw.model")

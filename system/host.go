@@ -15,48 +15,54 @@ import (
 	"github.com/shirou/gopsutil/v4/host"
 )
 
+// getVmType maps the VM type string to a more readable format.
+func getVmType(vmType string) string {
+	switch strings.TrimSpace(vmType) {
+	case "kvm":
+		return "KVM"
+	case "xen":
+		return "Xen Hypervisor"
+	case "microsoft":
+		return "Microsoft Hyper-V"
+	case "vmware":
+		return "VMware"
+	case "oracle":
+		return "Oracle VirtualBox"
+	case "parallels":
+		return "Parallels"
+	case "qemu":
+		return "QEMU"
+	case "amazon":
+		return "Amazon Virtualization"
+	case "docker":
+		return "Docker"
+	case "openvz":
+		return "OpenVZ (Virutozzo)"
+	case "lxc":
+		return "LXC"
+	case "lxc-libvirt":
+		return "LXC (Based on libvirt)"
+	case "uml":
+		return "User-mode Linux"
+	case "systemd-nspawn":
+		return "Systemd nspawn"
+	case "bochs":
+		return "BOCHS"
+	case "rkt":
+		return "RKT"
+	case "zvm":
+		return "S390 Z/VM"
+	case "none":
+		return "Dedicated"
+	}
+	return ""
+}
+
 func getVmTypeFromSDV(path string) string {
 	cmd := exec.Command(path)
 	output, err := cmd.Output()
 	if err == nil {
-		switch strings.TrimSpace(strings.ReplaceAll(string(output), "\n", "")) {
-		case "kvm":
-			return "KVM"
-		case "xen":
-			return "Xen Hypervisor"
-		case "microsoft":
-			return "Microsoft Hyper-V"
-		case "vmware":
-			return "VMware"
-		case "oracle":
-			return "Oracle VirtualBox"
-		case "parallels":
-			return "Parallels"
-		case "qemu":
-			return "QEMU"
-		case "amazon":
-			return "Amazon Virtualization"
-		case "docker":
-			return "Docker"
-		case "openvz":
-			return "OpenVZ (Virutozzo)"
-		case "lxc":
-			return "LXC"
-		case "lxc-libvirt":
-			return "LXC (Based on libvirt)"
-		case "uml":
-			return "User-mode Linux"
-		case "systemd-nspawn":
-			return "Systemd nspawn"
-		case "bochs":
-			return "BOCHS"
-		case "rkt":
-			return "RKT"
-		case "zvm":
-			return "S390 Z/VM"
-		case "none":
-			return "Dedicated"
-		}
+		return getVmType(strings.ReplaceAll(string(output), "\n", ""))
 	}
 	return ""
 }
@@ -64,64 +70,24 @@ func getVmTypeFromSDV(path string) string {
 func getVmTypeFromDMI(path string) string {
 	cmd := exec.Command(path, "-t", "system")
 	output, err := cmd.Output()
-	if err == nil && strings.Contains(strings.ToLower(string(output)), "family") {
-		var familyLine string
+	if err == nil {
+		// Check for 'family'
 		for _, line := range strings.Split(strings.ToLower(string(output)), "\n") {
 			if strings.Contains(line, "family") {
-				familyLine = strings.ReplaceAll(line, "family", "")
-				break
+				familyLine := strings.ReplaceAll(line, "family", "")
+				if vmType := getVmType(strings.TrimSpace(strings.ReplaceAll(familyLine, ":", ""))); vmType != "" {
+					return vmType
+				}
 			}
 		}
-		switch strings.TrimSpace(strings.ReplaceAll(familyLine, ":", "")) {
-		case "kvm":
-			return "KVM"
-		case "xen":
-			return "Xen Hypervisor"
-		case "microsoft":
-			return "Microsoft Hyper-V"
-		case "vmware":
-			return "VMware"
-		case "oracle":
-			return "Oracle VirtualBox"
-		case "parallels":
-			return "Parallels"
-		case "qemu":
-			return "QEMU"
-		case "amazon":
-			return "Amazon Virtualization"
-		case "docker":
-			return "Docker"
-		case "openvz":
-			return "OpenVZ (Virutozzo)"
-		case "lxc":
-			return "LXC"
-		case "lxc-libvirt":
-			return "LXC (Based on libvirt)"
-		case "uml":
-			return "User-mode Linux"
-		case "systemd-nspawn":
-			return "Systemd nspawn"
-		case "bochs":
-			return "BOCHS"
-		case "rkt":
-			return "RKT"
-		case "zvm":
-			return "S390 Z/VM"
-		case "none":
-			return "Dedicated"
-		}
-		var manuFacturer string
+		// Fallback to 'manufacturer'
 		for _, line := range strings.Split(strings.ToLower(string(output)), "\n") {
 			if strings.Contains(line, "manufacturer") {
 				tempL := strings.Split(line, ":")
 				if len(tempL) == 2 {
-					manuFacturer = strings.TrimSpace(tempL[1])
-					break
+					return strings.TrimSpace(tempL[1])
 				}
 			}
-		}
-		if manuFacturer != "" {
-			return manuFacturer
 		}
 	}
 	return ""

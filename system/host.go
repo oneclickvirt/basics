@@ -15,7 +15,7 @@ import (
 	"github.com/shirou/gopsutil/v4/host"
 )
 
-// getVmType maps the VM type string to a more readable format.
+// getVmType 匹配架构信息
 func getVmType(vmType string) string {
 	switch strings.TrimSpace(vmType) {
 	case "kvm":
@@ -58,6 +58,7 @@ func getVmType(vmType string) string {
 	return ""
 }
 
+// 使用 systemd-detect-virt 查询虚拟化信息
 func getVmTypeFromSDV(path string) string {
 	cmd := exec.Command(path)
 	output, err := cmd.Output()
@@ -67,6 +68,7 @@ func getVmTypeFromSDV(path string) string {
 	return ""
 }
 
+// 使用 dmidecode -t system 查询虚拟化信息
 func getVmTypeFromDMI(path string) string {
 	cmd := exec.Command(path, "-t", "system")
 	output, err := cmd.Output()

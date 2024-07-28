@@ -6,6 +6,7 @@ import (
 
 	"github.com/oneclickvirt/basics/model"
 	"github.com/oneclickvirt/basics/system/utils"
+	. "github.com/oneclickvirt/defaultset"
 )
 
 var (
@@ -18,16 +19,35 @@ var (
 
 // GetSystemInfo 获取主机硬件信息
 func GetSystemInfo() *model.SystemInfo {
+	if model.EnableLoger {
+		InitLogger()
+		defer Logger.Sync()
+	}
 	var ret = &model.SystemInfo{}
+	var err error
 	if runtime.GOOS == "darwin" {
 		getMacOSInfo()
 	}
 	// 系统信息查询
-	cpuType, ret.Uptime, ret.Platform, ret.Kernel, ret.Arch, ret.VmType, ret.NatType, ret.TimeZone, _ = getHostInfo()
+	cpuType, ret.Uptime, ret.Platform, ret.Kernel, ret.Arch, ret.VmType, ret.NatType, ret.TimeZone, err = getHostInfo()
+	if model.EnableLoger {
+		Logger.Info(err.Error())
+	}
 	// CPU信息查询
-	ret, _ = getCpuInfo(ret, cpuType)
+	ret, err = getCpuInfo(ret, cpuType)
+	if model.EnableLoger {
+		Logger.Info(err.Error())
+	}
+	// GPU信息查询
+	ret, err = getGPUInfo(ret)
+	if model.EnableLoger {
+		Logger.Info(err.Error())
+	}
 	// 硬盘信息查询
-	ret.DiskTotal, ret.DiskUsage, ret.Percentage, ret.BootPath, _ = getDiskInfo()
+	ret.DiskTotal, ret.DiskUsage, ret.Percentage, ret.BootPath, err = getDiskInfo()
+	if model.EnableLoger {
+		Logger.Info(err.Error())
+	}
 	// 内存信息查询
 	ret.MemoryTotal, ret.MemoryUsage, ret.SwapTotal, ret.SwapUsage, ret.VirtioBalloon, ret.KSM = getMemoryInfo()
 	// 获取负载信息
@@ -51,6 +71,12 @@ func CheckSystemInfo(language string) string {
 		res += " CPU Cores           : " + ret.CpuCores + "\n"
 		if ret.CpuCache != "" {
 			res += " CPU Cache           : " + ret.CpuCache + "\n"
+		}
+		if ret.GpuModel != "" {
+			res += " GPU Model           : " + ret.GpuModel + "\n"
+			if ret.GpuStats != "" && ret.GpuStats != "0" {
+				res += " GPU Stats            : " + ret.GpuStats + "\n"
+			}
 		}
 		if runtime.GOOS != "windows" && runtime.GOOS != "macos" {
 			res += " AES-NI              : " + ret.CpuAesNi + "\n"
@@ -94,6 +120,12 @@ func CheckSystemInfo(language string) string {
 		res += " CPU 数量            : " + ret.CpuCores + "\n"
 		if ret.CpuCache != "" {
 			res += " CPU 缓存            : " + ret.CpuCache + "\n"
+		}
+		if ret.GpuModel != "" {
+			res += " GPU 型号            : " + ret.GpuModel + "\n"
+			if ret.GpuStats != "" && ret.GpuStats != "0" {
+				res += " GPU 状态            : " + ret.GpuStats + "\n"
+			}
 		}
 		if runtime.GOOS != "windows" && runtime.GOOS != "macos" {
 			res += " AES-NI              : " + ret.CpuAesNi + "\n"

@@ -1,6 +1,6 @@
 package model
 
-const BasicsVersion = "v0.0.6"
+const BasicsVersion = "v0.0.7"
 
 var EnableLoger bool
 
@@ -119,6 +119,7 @@ type DiskInfo struct {
 
 type SystemInfo struct {
 	CpuInfo
+	GPUInfo
 	MemoryInfo
 	DiskInfo
 	Platform              string // 系统名字 Distro1
@@ -133,6 +134,11 @@ type SystemInfo struct {
 	VirtioBalloon         string // 气球驱动
 	KSM                   string // 内存合并
 	TcpAccelerationMethod string // TCP拥塞控制
+}
+
+type GPUInfo struct {
+	GpuModel string
+	GpuStats string
 }
 
 type Win32_Processor struct {
@@ -153,7 +159,7 @@ type Win32CacheMemory struct {
 }
 
 type Win32_VFE struct {
-    VirtualizationFirmwareEnabled bool
+	VirtualizationFirmwareEnabled bool
 }
 
 type Win32_ComputerSystem struct {

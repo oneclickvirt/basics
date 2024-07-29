@@ -116,13 +116,13 @@ func getCpuInfo(ret *model.SystemInfo, cpuType string) (*model.SystemInfo, error
 						ret.CpuModel = strings.TrimSpace(strings.Join(fields[1:], " "))
 					} else if strings.Contains(fields[0], "CPU MHz") && !strings.Contains(ret.CpuModel, "@") {
 						ret.CpuModel += " @ " + strings.TrimSpace(strings.Join(fields[1:], " ")) + " MHz"
-					} else if strings.Contains(fields[0], "L1d cache") {
+					} else if strings.Contains(fields[0], "L1d cache") || strings.Contains(fields[0], "L1d") {
 						L1dcache = strings.TrimSpace(strings.Join(fields[1:], " "))
-					} else if strings.Contains(fields[0], "L1i cache") {
+					} else if strings.Contains(fields[0], "L1i cache") || strings.Contains(fields[0], "L1i") {
 						L1icache = strings.TrimSpace(strings.Join(fields[1:], " "))
-					} else if strings.Contains(fields[0], "L2 cache") {
+					} else if strings.Contains(fields[0], "L2 cache") || strings.Contains(fields[0], "L2") {
 						L2cache = strings.TrimSpace(strings.Join(fields[1:], " "))
-					} else if strings.Contains(fields[0], "L3 cache") {
+					} else if strings.Contains(fields[0], "L3 cache") || strings.Contains(fields[0], "L3") {
 						L3cache = strings.TrimSpace(strings.Join(fields[1:], " "))
 					}
 				}

@@ -30,22 +30,22 @@ func GetSystemInfo() *model.SystemInfo {
 	}
 	// 系统信息查询
 	cpuType, ret.Uptime, ret.Platform, ret.Kernel, ret.Arch, ret.VmType, ret.NatType, ret.TimeZone, err = getHostInfo()
-	if model.EnableLoger {
+	if err != nil && model.EnableLoger {
 		Logger.Info(err.Error())
 	}
 	// CPU信息查询
 	ret, err = getCpuInfo(ret, cpuType)
-	if model.EnableLoger {
+	if err != nil && model.EnableLoger {
 		Logger.Info(err.Error())
 	}
 	// GPU信息查询
 	ret, err = getGPUInfo(ret)
-	if model.EnableLoger {
+	if err != nil && model.EnableLoger {
 		Logger.Info(err.Error())
 	}
 	// 硬盘信息查询
 	ret.DiskTotal, ret.DiskUsage, ret.Percentage, ret.BootPath, err = getDiskInfo()
-	if model.EnableLoger {
+	if err != nil && model.EnableLoger {
 		Logger.Info(err.Error())
 	}
 	// 内存信息查询

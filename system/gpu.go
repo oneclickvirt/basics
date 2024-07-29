@@ -21,16 +21,12 @@ const maxDeviceDataFetchAttempts = 3
 
 // 获取主机数据的尝试次数，Key 为 Host 的属性名
 var hostDataFetchAttempts = map[string]int{
-	"CPU": 0,
 	"GPU": 0,
 }
 
 // 获取状态数据的尝试次数，Key 为 HostState 的属性名
 var statDataFetchAttempts = map[string]int{
-	"CPU":          0,
-	"Load":         0,
-	"GPU":          0,
-	"Temperatures": 0,
+	"GPU": 0,
 }
 
 func atomicStoreFloat64(x *uint64, v float64) {
@@ -78,7 +74,7 @@ func getGPUInfo(ret *model.SystemInfo) (*model.SystemInfo, error) {
 		wg.Add(1)
 		go updateGPUStat(&gpuStat, &wg)
 		wg.Wait() // 等待 updateGPUStat 完成
-		ret.GpuStats =  fmt.Sprintf("%f", math.Float64frombits(gpuStat))
+		ret.GpuStats = fmt.Sprintf("%f", math.Float64frombits(gpuStat))
 		return ret, nil
 	} else {
 		hostDataFetchAttempts["GPU"]++

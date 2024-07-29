@@ -27,13 +27,13 @@ func FetchJsonFromURL(url, netType string, enableHeader bool, additionalHeader s
 
 	// 创建 HTTP 客户端
 	client := req.C()
-	client.SetTimeout(6 * time.Second).
+	client.SetTimeout(7 * time.Second).
 		SetDial(func(ctx context.Context, network, addr string) (net.Conn, error) {
 			return (&net.Dialer{}).DialContext(ctx, netType, addr)
 		}).
-		SetTLSHandshakeTimeout(3 * time.Second).
-		SetResponseHeaderTimeout(3 * time.Second).
-		SetExpectContinueTimeout(3 * time.Second)
+		SetTLSHandshakeTimeout(2 * time.Second).
+		SetResponseHeaderTimeout(2 * time.Second).
+		SetExpectContinueTimeout(2 * time.Second)
 	client.R().
 		SetRetryCount(2).
 		SetRetryBackoffInterval(1*time.Second, 2*time.Second).
@@ -57,7 +57,7 @@ func FetchJsonFromURL(url, netType string, enableHeader bool, additionalHeader s
 		return nil, fmt.Errorf("Error fetching %s info: %v", url, err)
 	}
 	// 检查响应状态码
-	if !resp.IsSuccess() {
+	if !resp.IsSuccessState() {
 		return nil, fmt.Errorf("Error fetching %s info: status code %d", url, resp.StatusCode)
 	}
 	// 解析 JSON 响应体

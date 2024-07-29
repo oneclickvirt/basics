@@ -53,7 +53,7 @@ func getVmType(vmType string) string {
 	case "zvm":
 		return "S390 Z/VM"
 	case "none":
-		return "Dedicated"
+		return ""
 	}
 	return ""
 }
@@ -83,14 +83,14 @@ func getVmTypeFromDMI(path string) string {
 			}
 		}
 		// Fallback to 'manufacturer'
-		for _, line := range strings.Split(strings.ToLower(string(output)), "\n") {
-			if strings.Contains(line, "manufacturer") {
-				tempL := strings.Split(line, ":")
-				if len(tempL) == 2 {
-					return strings.TrimSpace(tempL[1])
-				}
-			}
-		}
+		// for _, line := range strings.Split(strings.ToLower(string(output)), "\n") {
+		// 	if strings.Contains(line, "manufacturer") {
+		// 		tempL := strings.Split(line, ":")
+		// 		if len(tempL) == 2 {
+		// 			return strings.TrimSpace(tempL[1])
+		// 		}
+		// 	}
+		// }
 	}
 	return ""
 }
@@ -120,11 +120,7 @@ func getHostInfo() (string, string, string, string, string, string, string, stri
 			if exit {
 				VmType = getVmTypeFromSDV(path)
 			}
-			path, exit = utils.GetPATH("dmidecode")
-			if exit {
-				VmType = getVmTypeFromDMI(path)
-			}
-			if VmType == "" || VmType == "KVM" || VmType == "Dedicated" {
+			if VmType == "" {
 				_, err := os.Stat("/.dockerenv")
 				if os.IsExist(err) {
 					VmType = "Docker"
@@ -132,6 +128,10 @@ func getHostInfo() (string, string, string, string, string, string, string, stri
 				_, err = os.Stat("/dev/lxss")
 				if os.IsExist(err) {
 					VmType = "Windows Subsystem for Linux"
+				}
+				path, exit = utils.GetPATH("dmidecode")
+				if exit && VmType == "" {
+					VmType = getVmTypeFromDMI(path)
 				}
 				if VmType == "" {
 					VmType = "Dedicated (No visible signage)"

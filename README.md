@@ -17,7 +17,6 @@ Include: https://github.com/oneclickvirt/gostun
 ## TODO
 
 - [ ] 特化ASN和归属地查不出来的时候使用备用查询的API进行查询
-- [ ] CPUCache的信息需要矫正
 - [ ] 纯IPV6环境下使用cdn反代获取平台信息
 
 ## Usage

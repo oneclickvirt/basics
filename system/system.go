@@ -72,10 +72,10 @@ func CheckSystemInfo(language string) string {
 		if ret.CpuCache != "" {
 			res += " CPU Cache           : " + ret.CpuCache + "\n"
 		}
-		if ret.GpuModel != "" {
+		if ret.GpuModel != "" && ret.GpuModel != "unknown" {
 			res += " GPU Model           : " + ret.GpuModel + "\n"
 			if ret.GpuStats != "" && ret.GpuStats != "0" {
-				res += " GPU Stats            : " + ret.GpuStats + "\n"
+				res += " GPU Stats           : " + ret.GpuStats + "\n"
 			}
 		}
 		if runtime.GOOS != "windows" && runtime.GOOS != "macos" {
@@ -121,7 +121,7 @@ func CheckSystemInfo(language string) string {
 		if ret.CpuCache != "" {
 			res += " CPU 缓存            : " + ret.CpuCache + "\n"
 		}
-		if ret.GpuModel != "" {
+		if ret.GpuModel != "" && ret.GpuModel != "unknown" {
 			res += " GPU 型号            : " + ret.GpuModel + "\n"
 			if ret.GpuStats != "" && ret.GpuStats != "0" {
 				res += " GPU 状态            : " + ret.GpuStats + "\n"

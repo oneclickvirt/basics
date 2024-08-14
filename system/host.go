@@ -1,6 +1,7 @@
 package system
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"os"
@@ -124,6 +125,16 @@ func getHostInfo() (string, string, string, string, string, string, string, stri
 				_, err := os.Stat("/.dockerenv")
 				if os.IsExist(err) {
 					VmType = "Docker"
+				}
+				cgroupFile, err := os.Open("/proc/1/cgroup")
+				defer cgroupFile.Close()
+				if err == nil {
+					scanner := bufio.NewScanner(cgroupFile)
+					for scanner.Scan() {
+						if strings.Contains(scanner.Text(), "docker") {
+							VmType = "Docker"
+						}
+					}
 				}
 				_, err = os.Stat("/dev/lxss")
 				if os.IsExist(err) {

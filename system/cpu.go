@@ -114,7 +114,7 @@ func getCpuInfo(ret *model.SystemInfo, cpuType string) (*model.SystemInfo, error
 				if len(fields) >= 2 {
 					if strings.Contains(fields[0], "Model name") && !strings.Contains(fields[0], "BIOS Model name") && ret.CpuModel == "" {
 						ret.CpuModel = strings.TrimSpace(strings.Join(fields[1:], " "))
-					} else if strings.Contains(fields[0], "CPU MHz") && !strings.Contains(ret.CpuModel, "@") {
+					} else if strings.Contains(fields[0], "CPU MHz") && !strings.Contains(ret.CpuModel, "@") && ret.CpuModel != "" {
 						ret.CpuModel += " @ " + strings.TrimSpace(strings.Join(fields[1:], " ")) + " MHz"
 					} else if strings.Contains(fields[0], "L1d cache") || strings.Contains(fields[0], "L1d") {
 						L1dcache = strings.TrimSpace(strings.Join(fields[1:], " "))
@@ -153,7 +153,7 @@ func getCpuInfo(ret *model.SystemInfo, cpuType string) (*model.SystemInfo, error
 	}
 	// 使用 /proc/device-tree 获取信息 - 特化适配嵌入式系统
 	deviceTreeContent, err := os.ReadFile("/proc/device-tree")
-	if err == nil {
+	if err == nil && ret.CpuModel == "" {
 		ret.CpuModel = string(deviceTreeContent)
 	}
 	// 获取虚拟化架构
@@ -294,13 +294,13 @@ func getCpuInfo(ret *model.SystemInfo, cpuType string) (*model.SystemInfo, error
 	if runtime.GOOS == "darwin" {
 		if len(model.MacOSInfo) > 0 {
 			for _, line := range model.MacOSInfo {
-				if strings.Contains(line, "Chip") {
+				if strings.Contains(line, "Chip") && ret.CpuModel == "" {
 					ret.CpuModel = strings.TrimSpace(strings.Split(line, ":")[1])
 				}
-				if strings.Contains(line, "Total Number of Cores") {
+				if strings.Contains(line, "Total Number of Cores") && ret.CpuCores == "" {
 					ret.CpuCores = strings.TrimSpace(strings.Split(line, ":")[1])
 				}
-				if strings.Contains(line, "Memory") {
+				if strings.Contains(line, "Memory") && ret.MemoryTotal == "" {
 					ret.MemoryTotal = strings.TrimSpace(strings.Split(line, ":")[1])
 				}
 			}

@@ -14,11 +14,6 @@ Include: https://github.com/oneclickvirt/gostun
 - [x] 部分Windows10系统下打勾打叉编码错误显示，已判断是Win时使用Y/N显示而不是勾叉
 - [x] 检测GPU相关信息，参考[ghw](https://github.com/jaypipes/ghw)
 
-## TODO
-
-- [ ] 特化ASN和归属地查不出来的时候使用备用查询的API进行查询
-- [ ] 纯IPV6环境下使用cdn反代获取平台信息
-
 ## Usage
 
 下载及安装

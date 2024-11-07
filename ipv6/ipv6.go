@@ -48,28 +48,25 @@ func getIPv6PrefixLength(interfaceName string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
-	re := regexp.MustCompile(`inet6 (?!fe80:).*prefixlen (\d+)`)
+	// 去掉负向先行断言，手动排除 fe80 前缀
+	re := regexp.MustCompile(`inet6 ([^ ]+) prefixlen (\d+)`)
 	matches := re.FindAllStringSubmatch(string(output), -1)
 
 	if len(matches) == 0 {
 		return "", nil
 	}
-
 	var prefixLens []string
 	for _, match := range matches {
-		if len(match) > 1 {
-			prefixLens = append(prefixLens, match[1])
+		if len(match) > 2 && !strings.HasPrefix(match[1], "fe80") {
+			prefixLens = append(prefixLens, match[2])
 		}
 	}
-
 	if len(prefixLens) >= 2 {
 		sort.Strings(prefixLens)
 		return prefixLens[0], nil
 	} else if len(prefixLens) == 1 {
 		return prefixLens[0], nil
 	}
-
 	return "", nil
 }
 

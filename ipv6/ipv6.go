@@ -119,6 +119,9 @@ func GetIPv6Mask(language string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("Failed to get IPv6 prefix length: %v", err)
 	}
+	if ipv6Prefixlen == "" {
+		return "", fmt.Errorf("get IPv6 prefix length is null")
+	}
 
 	// 输出结果
 	if updatedIPv6 == currentIPv6 || updatedIPv6 == "" {

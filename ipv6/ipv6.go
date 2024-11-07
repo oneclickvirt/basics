@@ -49,7 +49,7 @@ func getIPv6PrefixLength(interfaceName string) (string, error) {
 		return "", err
 	}
 	// 匹配 inet6 地址和前缀长度
-	re := regexp.MustCompile(`inet6 ([^ ]+) prefixlen (\d+)`)
+	re := regexp.MustCompile(`\s*inet6\s+([a-fA-F0-9:]+)\s+prefixlen\s+(\d+)\s*`)
 	matches := re.FindAllStringSubmatch(string(output), -1)
 	if len(matches) == 0 {
 		return "", nil
@@ -86,7 +86,7 @@ func GetIPv6Mask(language string) (string, error) {
 	if err != nil || interfaceName == "" {
 		return "", fmt.Errorf("Failed to get network interface: %v", err)
 	}
-	fmt.Println(interfaceName)
+	// fmt.Println(interfaceName)
 	// 获取当前 IPv6 地址
 	currentIPv6, err := getCurrentIPv6()
 	if err != nil || currentIPv6 == "" {

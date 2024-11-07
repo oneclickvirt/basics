@@ -86,34 +86,29 @@ func GetIPv6Mask(language string) (string, error) {
 	if err != nil || interfaceName == "" {
 		return "", fmt.Errorf("Failed to get network interface: %v", err)
 	}
-
+	fmt.Println(interfaceName)
 	// 获取当前 IPv6 地址
 	currentIPv6, err := getCurrentIPv6()
 	if err != nil || currentIPv6 == "" {
 		return "", fmt.Errorf("Failed to get current IPv6 address: %v", err)
 	}
-
 	// 生成新的 IPv6 地址
 	newIPv6 := currentIPv6[:strings.LastIndex(currentIPv6, ":")] + ":3"
-
 	// 添加新的 IPv6 地址
 	if err := addIPv6(interfaceName, newIPv6); err != nil {
 		return "", fmt.Errorf("Failed to add IPv6 address: %v", err)
 	}
 	time.Sleep(5 * time.Second)
-
 	// 获取更新后的 IPv6 地址
 	updatedIPv6, err := getCurrentIPv6()
 	if err != nil {
 		return "", fmt.Errorf("Failed to get updated IPv6 address: %v", err)
 	}
-
 	// 删除添加的 IPv6 地址
 	if err := delIPv6(interfaceName, newIPv6); err != nil {
 		return "", fmt.Errorf("Failed to delete IPv6 address: %v", err)
 	}
 	time.Sleep(5 * time.Second)
-
 	// 获取子网掩码前缀长度
 	ipv6Prefixlen, err := getIPv6PrefixLength(interfaceName)
 	if err != nil {
@@ -122,7 +117,6 @@ func GetIPv6Mask(language string) (string, error) {
 	if ipv6Prefixlen == "" {
 		return "", fmt.Errorf("get IPv6 prefix length is null")
 	}
-
 	// 输出结果
 	if updatedIPv6 == currentIPv6 || updatedIPv6 == "" {
 		if language == "en" {

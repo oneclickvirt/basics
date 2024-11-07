@@ -8,7 +8,7 @@ import (
 )
 
 // GetIPv6Mask 匹配获取公网 IPV6 的掩码信息
-func GetIPv6Mask() (string, error) {
+func GetIPv6Mask(language string) (string, error) {
 	interfaceName := getNetworkInterface()
 	if interfaceName == "" {
 		return "", fmt.Errorf("无法获取网络接口名称")
@@ -30,16 +30,28 @@ func GetIPv6Mask() (string, error) {
 					}
 					if len(updatedAddrs) == len(addrs) {
 						_, bits := ipnet.Mask.Size()
-						return fmt.Sprintf("IPv6 子网掩码: /%d\n", bits), nil
+						if language == "en" {
+							return fmt.Sprintf(" IPV6 Mask           : /%d\n", bits), nil
+						} else {
+							return fmt.Sprintf(" IPV6 子网掩码       : /%d\n", bits), nil
+						}
 					}
 					for _, updatedAddr := range updatedAddrs {
 						if updatedIPnet, ok := updatedAddr.(*net.IPNet); ok {
 							if updatedIPv6 := updatedIPnet.IP.To16(); updatedIPv6 != nil {
 								if !isIPv6LinkLocal(updatedIPv6) && !isIPv6SiteLocal(updatedIPv6) && updatedIPv6.String() != ipv6.String() {
 									_, bits := updatedIPnet.Mask.Size()
-									return fmt.Sprintf("IPv6 子网掩码: /%d\n", bits), nil
+									if language == "en" {
+										return fmt.Sprintf(" IPV6 Mask           : /%d\n", bits), nil
+									} else {
+										return fmt.Sprintf(" IPV6 子网掩码       : /%d\n", bits), nil
+									}
 								} else if !isIPv6LinkLocal(updatedIPv6) && !isIPv6SiteLocal(updatedIPv6) && updatedIPv6.String() == ipv6.String() {
-									return "IPv6 子网掩码: /128", nil
+									if language == "en" {
+										return " IPV6 Mask           : /128", nil
+									} else {
+										return " IPV6 子网掩码       : /128", nil
+									}
 								}
 							}
 						}

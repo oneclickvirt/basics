@@ -41,7 +41,7 @@ func main() {
 	}()
 	fmt.Println("项目地址:", "https://github.com/oneclickvirt/basics")
 	ipInfo, _, _ := network.NetworkCheck("both", false, language)
-	ipv6Info, err := ipv6.GetIPv6Mask()
+	ipv6Info, err := ipv6.GetIPv6Mask(language)
 	res := system.CheckSystemInfo(language)
 	fmt.Println("--------------------------------------------------")
 	temp := strings.ReplaceAll(res+ipInfo, "\n\n", "\n")

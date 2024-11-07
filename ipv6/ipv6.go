@@ -11,7 +11,7 @@ import (
 
 // 获取第一个以 eth 或 en 开头的网络接口
 func getInterface() (string, error) {
-	cmd := exec.Command("sh", "-c", "ls /sys/class/net/ | grep -v \"$(ls /sys/devices/virtual/net/)\" | grep -E '^(eth|en)' | head -n 1")
+	cmd := exec.Command("sh", "-c", "ls /sys/class/net/ | grep -E '^(eth|en)' | head -n 1")
 	output, err := cmd.Output()
 	if err != nil {
 		return "", err
@@ -123,12 +123,12 @@ func GetIPv6Mask(language string) (string, error) {
 	// 输出结果
 	if updatedIPv6 == currentIPv6 || updatedIPv6 == "" {
 		if language == "en" {
-			return "IPv6 Mask           : /128", nil
+			return " IPv6 Mask           : /128", nil
 		}
-		return "IPv6 子网掩码       : /128", nil
+		return " IPv6 子网掩码       : /128", nil
 	}
 	if language == "en" {
-		return fmt.Sprintf("IPv6 Mask           : /%s\n", ipv6Prefixlen), nil
+		return fmt.Sprintf(" IPv6 Mask           : /%s\n", ipv6Prefixlen), nil
 	}
-	return fmt.Sprintf("IPv6 子网掩码       : /%s\n", ipv6Prefixlen), nil
+	return fmt.Sprintf(" IPv6 子网掩码       : /%s\n", ipv6Prefixlen), nil
 }

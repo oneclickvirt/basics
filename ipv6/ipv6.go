@@ -48,16 +48,25 @@ func getIPv6PrefixLength(interfaceName string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	// 去掉负向先行断言，手动排除 fe80 前缀
+	// 匹配 inet6 地址和前缀长度
 	re := regexp.MustCompile(`inet6 ([^ ]+) prefixlen (\d+)`)
 	matches := re.FindAllStringSubmatch(string(output), -1)
-
 	if len(matches) == 0 {
 		return "", nil
 	}
 	var prefixLens []string
 	for _, match := range matches {
-		if len(match) > 2 && !strings.HasPrefix(match[1], "fe80") {
+		ipv6Addr := match[1]
+		// 排除非公网地址前缀
+		if strings.HasPrefix(ipv6Addr, "fe80") ||    // 链路本地地址
+			strings.HasPrefix(ipv6Addr, "::1") ||     // 回环地址
+			strings.HasPrefix(ipv6Addr, "fc") ||      // 本地唯一地址
+			strings.HasPrefix(ipv6Addr, "fd") ||      // 本地唯一地址
+			strings.HasPrefix(ipv6Addr, "ff") {       // 组播地址
+			continue
+		}
+		// 提取 prefixlen
+		if len(match) > 2 {
 			prefixLens = append(prefixLens, match[2])
 		}
 	}

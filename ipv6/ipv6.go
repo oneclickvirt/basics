@@ -2,108 +2,127 @@ package ipv6
 
 import (
 	"fmt"
-	"net"
 	"os/exec"
+	"regexp"
+	"sort"
 	"strings"
+	"time"
 )
 
-// GetIPv6Mask 匹配获取公网 IPV6 的掩码信息
-func GetIPv6Mask(language string) (string, error) {
-	interfaceName := getNetworkInterface()
-	if interfaceName == "" {
-		return "", fmt.Errorf("无法获取网络接口名称")
-	}
-	addrs, err := net.InterfaceAddrs()
+// 获取第一个以 eth 或 en 开头的网络接口
+func getInterface() (string, error) {
+	cmd := exec.Command("sh", "-c", "ls /sys/class/net/ | grep -v \"$(ls /sys/devices/virtual/net/)\" | grep -E '^(eth|en)' | head -n 1")
+	output, err := cmd.Output()
 	if err != nil {
 		return "", err
 	}
-	for _, addr := range addrs {
-		if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
-			if ipv6 := ipnet.IP.To16(); ipv6 != nil {
-				if !ipv6.IsLinkLocalUnicast() && !isIPv6LinkLocal(ipv6) && !isIPv6SiteLocal(ipv6) {
-					newIPv6 := generateNewIPv6(ipv6.String())
-					addIPv6Address(interfaceName, newIPv6)
-					defer removeIPv6Address(interfaceName, newIPv6)
-					updatedAddrs, err := net.InterfaceAddrs()
-					if err != nil {
-						return "", err
-					}
-					if len(updatedAddrs) == len(addrs) {
-						_, bits := ipnet.Mask.Size()
-						if language == "en" {
-							return fmt.Sprintf(" IPV6 Mask           : /%d\n", bits), nil
-						} else {
-							return fmt.Sprintf(" IPV6 子网掩码       : /%d\n", bits), nil
-						}
-					}
-					for _, updatedAddr := range updatedAddrs {
-						if updatedIPnet, ok := updatedAddr.(*net.IPNet); ok {
-							if updatedIPv6 := updatedIPnet.IP.To16(); updatedIPv6 != nil {
-								if !isIPv6LinkLocal(updatedIPv6) && !isIPv6SiteLocal(updatedIPv6) && updatedIPv6.String() != ipv6.String() {
-									_, bits := updatedIPnet.Mask.Size()
-									if language == "en" {
-										return fmt.Sprintf(" IPV6 Mask           : /%d\n", bits), nil
-									} else {
-										return fmt.Sprintf(" IPV6 子网掩码       : /%d\n", bits), nil
-									}
-								} else if !isIPv6LinkLocal(updatedIPv6) && !isIPv6SiteLocal(updatedIPv6) && updatedIPv6.String() == ipv6.String() {
-									if language == "en" {
-										return " IPV6 Mask           : /128", nil
-									} else {
-										return " IPV6 子网掩码       : /128", nil
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-	return "", fmt.Errorf("无法获取公网 IPv6 地址")
+	return strings.TrimSpace(string(output)), nil
 }
 
-func getNetworkInterface() string {
-	ifaces, err := net.Interfaces()
+// 获取当前的 IPv6 地址
+func getCurrentIPv6() (string, error) {
+	cmd := exec.Command("curl", "-s", "-6", "-m", "5", "ipv6.ip.sb")
+	output, err := cmd.Output()
 	if err != nil {
-		return ""
+		return "", err
+	}
+	return strings.TrimSpace(string(output)), nil
+}
+
+// 添加 IPv6 地址到指定接口
+func addIPv6(interfaceName, ipv6 string) error {
+	cmd := exec.Command("ip", "addr", "add", ipv6+"/128", "dev", interfaceName)
+	return cmd.Run()
+}
+
+// 删除指定接口上的 IPv6 地址
+func delIPv6(interfaceName, ipv6 string) error {
+	cmd := exec.Command("ip", "addr", "del", ipv6+"/128", "dev", interfaceName)
+	return cmd.Run()
+}
+
+// 获取接口的子网掩码前缀
+func getIPv6PrefixLength(interfaceName string) (string, error) {
+	cmd := exec.Command("ifconfig", interfaceName)
+	output, err := cmd.Output()
+	if err != nil {
+		return "", err
 	}
 
-	for _, iface := range ifaces {
-		if strings.HasPrefix(iface.Name, "eth") || strings.HasPrefix(iface.Name, "en") {
-			return iface.Name
+	re := regexp.MustCompile(`inet6 (?!fe80:).*prefixlen (\d+)`)
+	matches := re.FindAllStringSubmatch(string(output), -1)
+
+	if len(matches) == 0 {
+		return "", nil
+	}
+
+	var prefixLens []string
+	for _, match := range matches {
+		if len(match) > 1 {
+			prefixLens = append(prefixLens, match[1])
 		}
 	}
 
-	return ""
-}
-
-func generateNewIPv6(currentIPv6 string) string {
-	parts := strings.Split(currentIPv6, ":")
-	if len(parts) < 8 {
-		return ""
+	if len(prefixLens) >= 2 {
+		sort.Strings(prefixLens)
+		return prefixLens[0], nil
+	} else if len(prefixLens) == 1 {
+		return prefixLens[0], nil
 	}
-	return fmt.Sprintf("%s:%s", strings.Join(parts[:7], ":"), "3")
+
+	return "", nil
 }
 
-func addIPv6Address(interfaceName, ipv6Address string) {
-	_, err := exec.Command("ip", "addr", "add", ipv6Address+"/128", "dev", interfaceName).Output()
+// 获取 IPv6 子网掩码
+func GetIPv6Mask(language string) (string, error) {
+	// 获取网络接口
+	interfaceName, err := getInterface()
+	if err != nil || interfaceName == "" {
+		return "", fmt.Errorf("Failed to get network interface: %v", err)
+	}
+
+	// 获取当前 IPv6 地址
+	currentIPv6, err := getCurrentIPv6()
+	if err != nil || currentIPv6 == "" {
+		return "", fmt.Errorf("Failed to get current IPv6 address: %v", err)
+	}
+
+	// 生成新的 IPv6 地址
+	newIPv6 := currentIPv6[:strings.LastIndex(currentIPv6, ":")] + ":3"
+
+	// 添加新的 IPv6 地址
+	if err := addIPv6(interfaceName, newIPv6); err != nil {
+		return "", fmt.Errorf("Failed to add IPv6 address: %v", err)
+	}
+	time.Sleep(5 * time.Second)
+
+	// 获取更新后的 IPv6 地址
+	updatedIPv6, err := getCurrentIPv6()
 	if err != nil {
-		return
+		return "", fmt.Errorf("Failed to get updated IPv6 address: %v", err)
 	}
-}
 
-func removeIPv6Address(interfaceName, ipv6Address string) {
-	_, err := exec.Command("ip", "addr", "del", ipv6Address+"/128", "dev", interfaceName).Output()
+	// 删除添加的 IPv6 地址
+	if err := delIPv6(interfaceName, newIPv6); err != nil {
+		return "", fmt.Errorf("Failed to delete IPv6 address: %v", err)
+	}
+	time.Sleep(5 * time.Second)
+
+	// 获取子网掩码前缀长度
+	ipv6Prefixlen, err := getIPv6PrefixLength(interfaceName)
 	if err != nil {
-		return
+		return "", fmt.Errorf("Failed to get IPv6 prefix length: %v", err)
 	}
-}
 
-func isIPv6LinkLocal(ip net.IP) bool {
-	return strings.HasPrefix(ip.String(), "fe80:")
-}
-
-func isIPv6SiteLocal(ip net.IP) bool {
-	return strings.HasPrefix(ip.String(), "fec0:")
+	// 输出结果
+	if updatedIPv6 == currentIPv6 || updatedIPv6 == "" {
+		if language == "en" {
+			return "IPv6 Mask           : /128", nil
+		}
+		return "IPv6 子网掩码       : /128", nil
+	}
+	if language == "en" {
+		return fmt.Sprintf("IPv6 Mask           : /%s\n", ipv6Prefixlen), nil
+	}
+	return fmt.Sprintf("IPv6 子网掩码       : /%s\n", ipv6Prefixlen), nil
 }

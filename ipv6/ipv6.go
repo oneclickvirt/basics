@@ -41,15 +41,53 @@ func delIPv6(interfaceName, ipv6 string) error {
 	return cmd.Run()
 }
 
-// 获取接口的子网掩码前缀
+// ifconfig
+// func getIPv6PrefixLength(interfaceName string) (string, error) {
+// 	cmd := exec.Command("ifconfig", interfaceName)
+// 	output, err := cmd.Output()
+// 	if err != nil {
+// 		return "", err
+// 	}
+// 	// 匹配 inet6 地址和前缀长度
+// 	re := regexp.MustCompile(`\s*inet6\s+([a-fA-F0-9:]+)\s+prefixlen\s+(\d+)\s*`)
+// 	matches := re.FindAllStringSubmatch(string(output), -1)
+// 	if len(matches) == 0 {
+// 		return "", nil
+// 	}
+// 	var prefixLens []string
+// 	for _, match := range matches {
+// 		ipv6Addr := match[1]
+// 		// 排除非公网地址前缀
+// 		if strings.HasPrefix(ipv6Addr, "fe80") ||    // 链路本地地址
+// 			strings.HasPrefix(ipv6Addr, "::1") ||     // 回环地址
+// 			strings.HasPrefix(ipv6Addr, "fc") ||      // 本地唯一地址
+// 			strings.HasPrefix(ipv6Addr, "fd") ||      // 本地唯一地址
+// 			strings.HasPrefix(ipv6Addr, "ff") {       // 组播地址
+// 			continue
+// 		}
+// 		// 提取 prefixlen
+// 		if len(match) > 2 {
+// 			prefixLens = append(prefixLens, match[2])
+// 		}
+// 	}
+// 	if len(prefixLens) >= 2 {
+// 		sort.Strings(prefixLens)
+// 		return prefixLens[0], nil
+// 	} else if len(prefixLens) == 1 {
+// 		return prefixLens[0], nil
+// 	}
+// 	return "", nil
+// }
+
+// 获取接口的子网掩码前缀 ip
 func getIPv6PrefixLength(interfaceName string) (string, error) {
-	cmd := exec.Command("ifconfig", interfaceName)
+	cmd := exec.Command("ip", "-o", "-6", "addr", "show", interfaceName)
 	output, err := cmd.Output()
 	if err != nil {
 		return "", err
 	}
 	// 匹配 inet6 地址和前缀长度
-	re := regexp.MustCompile(`\s*inet6\s+([a-fA-F0-9:]+)\s+prefixlen\s+(\d+)\s*`)
+	re := regexp.MustCompile(`\s*inet6\s+([a-fA-F0-9:]+)/(\d+)\s+`)
 	matches := re.FindAllStringSubmatch(string(output), -1)
 	if len(matches) == 0 {
 		return "", nil

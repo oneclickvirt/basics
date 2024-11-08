@@ -87,7 +87,7 @@ func getIPv6PrefixLength(interfaceName string) (string, error) {
 		return "", err
 	}
 	// 匹配 inet6 地址和前缀长度
-	re := regexp.MustCompile(`\s*inet6\s+([a-fA-F0-9:]+)/(\d+)\s+`)
+	re := regexp.MustCompile(`\s*inet6\s+([a-fA-F0-9:]+)/(\d+)\s+scope\s+global`)
 	matches := re.FindAllStringSubmatch(string(output), -1)
 	if len(matches) == 0 {
 		return "", nil

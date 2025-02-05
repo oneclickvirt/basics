@@ -86,19 +86,26 @@ func getCpuInfoFromProcCpuinfo(ret *model.SystemInfo) {
 	defer cpuinfoFile.Close()
 	scanner := bufio.NewScanner(cpuinfoFile)
 	var modelNameFound bool
+	var cpuMHz string
 	for scanner.Scan() {
 		line := scanner.Text()
 		fields := strings.Split(line, ":")
 		if len(fields) >= 2 {
-			if strings.Contains(fields[0], "model name") {
-				ret.CpuModel = strings.TrimSpace(strings.Join(fields[1:], " "))
+			key := strings.TrimSpace(fields[0])
+			value := strings.TrimSpace(strings.Join(fields[1:], " "))
+			switch {
+			case strings.Contains(key, "model name"):
+				ret.CpuModel = value
 				modelNameFound = true
-			} else if strings.Contains(fields[0], "cache size") {
-				ret.CpuCache = strings.TrimSpace(strings.Join(fields[1:], " "))
-			} else if strings.Contains(fields[0], "cpu MHz") && !strings.Contains(ret.CpuModel, "@") && modelNameFound {
-				ret.CpuModel += " @ " + strings.TrimSpace(strings.Join(fields[1:], " ")) + " MHz"
+			case strings.Contains(key, "cache size"):
+				ret.CpuCache = value
+			case strings.Contains(key, "cpu MHz"):
+				cpuMHz = value
 			}
 		}
+	}
+	if modelNameFound && cpuMHz != "" && !strings.Contains(ret.CpuModel, "@") {
+		ret.CpuModel += " @ " + cpuMHz + " MHz"
 	}
 }
 
@@ -119,8 +126,12 @@ func getCpuInfoFromLscpu(ret *model.SystemInfo) {
 		switch {
 		case strings.Contains(fields[0], "Model name") && !strings.Contains(fields[0], "BIOS Model name") && ret.CpuModel == "":
 			ret.CpuModel = value
-		case strings.Contains(fields[0], "CPU MHz") && !strings.Contains(ret.CpuModel, "@") && ret.CpuModel != "":
+		case strings.Contains(fields[0], "CPU MHz") && !strings.Contains(ret.CpuModel, "@"):
 			ret.CpuModel += " @ " + value + " MHz"
+		case strings.Contains(fields[0], "CPU static MHz") && !strings.Contains(ret.CpuModel, "@"):
+			ret.CpuModel += " @ " + value + " static MHz"
+		case strings.Contains(fields[0], "CPU dynamic MHz") && !strings.Contains(ret.CpuModel, "@"):
+			ret.CpuModel += " @ " + value + " dynamic MHz"
 		case strings.Contains(fields[0], "L1d cache") || strings.Contains(fields[0], "L1d"):
 			L1dcache = value
 		case strings.Contains(fields[0], "L1i cache") || strings.Contains(fields[0], "L1i"):
@@ -215,6 +226,20 @@ func getWindowsCpuInfo(ret *model.SystemInfo) (*model.SystemInfo, error) {
 func getLinuxCpuInfo(ret *model.SystemInfo) (*model.SystemInfo, error) {
 	getCpuInfoFromProcCpuinfo(ret)
 	getCpuInfoFromLscpu(ret)
+	ci, err := cpu.Info()
+	if err == nil {
+		for i := 0; i < len(ci); i++ {
+			if len(ret.CpuModel) < len(ci[i].ModelName) {
+				newModel := strings.TrimSpace(ci[i].ModelName)
+				if strings.Contains(ret.CpuModel, "@") {
+					freqPart := ret.CpuModel[strings.Index(ret.CpuModel, "@"):]
+					ret.CpuModel = newModel + " " + freqPart
+				} else {
+					ret.CpuModel = newModel
+				}
+			}
+		}
+	}
 	deviceTreeContent, err := os.ReadFile("/proc/device-tree")
 	if err == nil && ret.CpuModel == "" {
 		ret.CpuModel = string(deviceTreeContent)

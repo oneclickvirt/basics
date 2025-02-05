@@ -142,6 +142,24 @@ func getCpuInfoFromLscpu(ret *model.SystemInfo) {
 			L3cache = value
 		}
 	}
+	// 在实在找不到型号的时候，直接输出CPU制造的厂商
+	if strings.Contains(ret.CpuModel, "@") && len(ret.CpuModel[:strings.Index(ret.CpuModel, "@")]) < 3 {
+		for _, line := range lines {
+			fields := strings.Split(line, ":")
+			if len(fields) < 2 {
+				continue
+			}
+			if strings.Contains(fields[0], "Vendor ID") {
+				newModel := strings.TrimSpace(strings.Join(fields[1:], " "))
+				if strings.Contains(ret.CpuModel, "@") && len(ret.CpuModel[:strings.Index(ret.CpuModel, "@")]) < len(newModel) {
+					freqPart := ret.CpuModel[strings.Index(ret.CpuModel, "@"):]
+					ret.CpuModel = newModel + " " + freqPart
+				} else {
+					ret.CpuModel = newModel
+				}
+			}
+		}
+	}
 	updateCpuCache(ret, L1dcache, L1icache, L2cache, L3cache)
 }
 
@@ -229,14 +247,12 @@ func getLinuxCpuInfo(ret *model.SystemInfo) (*model.SystemInfo, error) {
 	ci, err := cpu.Info()
 	if err == nil {
 		for i := 0; i < len(ci); i++ {
-			if len(ret.CpuModel) < len(ci[i].ModelName) {
-				newModel := strings.TrimSpace(ci[i].ModelName)
-				if strings.Contains(ret.CpuModel, "@") {
-					freqPart := ret.CpuModel[strings.Index(ret.CpuModel, "@"):]
-					ret.CpuModel = newModel + " " + freqPart
-				} else {
-					ret.CpuModel = newModel
-				}
+			newModel := strings.TrimSpace(ci[i].ModelName)
+			if strings.Contains(ret.CpuModel, "@") && len(ret.CpuModel[:strings.Index(ret.CpuModel, "@")]) < len(ci[i].ModelName) {
+				freqPart := ret.CpuModel[strings.Index(ret.CpuModel, "@"):]
+				ret.CpuModel = newModel + " " + freqPart
+			} else {
+				ret.CpuModel = newModel
 			}
 		}
 	}

@@ -91,7 +91,7 @@ func getCpuInfoFromProcCpuinfo(ret *model.SystemInfo) {
 	defer cpuinfoFile.Close()
 	scanner := bufio.NewScanner(cpuinfoFile)
 	var modelNameFound bool
-	var cpuMHz string
+	var cpuMHz, cpuGHz string
 	for scanner.Scan() {
 		line := scanner.Text()
 		fields := strings.Split(line, ":")

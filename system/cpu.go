@@ -17,6 +17,27 @@ import (
 )
 
 func checkCPUFeatureLinux(filename string, feature string) (string, bool) {
+	if feature == "hypervisor" {
+		cmd := exec.Command("lscpu", "-B")
+		output, err := cmd.Output()
+		if err == nil {
+			lscpuLines := strings.Split(string(output), "\n")
+			var virtualizationType string
+			for _, l := range lscpuLines {
+				if strings.Contains(l, "Hypervisor:") {
+					for _, l := range lscpuLines {
+						if strings.Contains(l, "Virtualization type:") {
+							tp := strings.Split(l, ":")
+							if len(tp) == 2 {
+								virtualizationType = fmt.Sprintf(" (%s)", strings.TrimSpace(tp[1]))
+							}
+						}
+					}
+					return "✔️ Enabled" + virtualizationType, true
+				}
+			}
+		}
+	}
 	content, err := os.ReadFile(filename)
 	if err != nil {
 		return "Error reading file", false
@@ -24,14 +45,8 @@ func checkCPUFeatureLinux(filename string, feature string) (string, bool) {
 	lines := strings.Split(string(content), "\n")
 	for _, line := range lines {
 		if strings.Contains(line, feature) {
-			if runtime.GOOS == "windows" {
-				return "[Y] Enabled", true
-			}
 			return "✔️ Enabled", true
 		}
-	}
-	if runtime.GOOS == "windows" {
-		return "[N] Disabled", false
 	}
 	return "❌ Disabled", false
 }
@@ -45,7 +60,6 @@ func checkCPUFeature(filename string, feature string) (string, bool) {
 	return "Unsupported OS", false
 }
 
-// convertBytes 转换字节数
 func convertBytes(bytes int64) (string, int64) {
 	const (
 		KB = 1024
@@ -64,247 +78,281 @@ func convertBytes(bytes int64) (string, int64) {
 	}
 }
 
+func getCpuInfoFromProcCpuinfo(ret *model.SystemInfo) {
+	cpuinfoFile, err := os.Open("/proc/cpuinfo")
+	if err != nil {
+		return
+	}
+	defer cpuinfoFile.Close()
+	scanner := bufio.NewScanner(cpuinfoFile)
+	var modelNameFound bool
+	for scanner.Scan() {
+		line := scanner.Text()
+		fields := strings.Split(line, ":")
+		if len(fields) >= 2 {
+			if strings.Contains(fields[0], "model name") {
+				ret.CpuModel = strings.TrimSpace(strings.Join(fields[1:], " "))
+				modelNameFound = true
+			} else if strings.Contains(fields[0], "cache size") {
+				ret.CpuCache = strings.TrimSpace(strings.Join(fields[1:], " "))
+			} else if strings.Contains(fields[0], "cpu MHz") && !strings.Contains(ret.CpuModel, "@") && modelNameFound {
+				ret.CpuModel += " @ " + strings.TrimSpace(strings.Join(fields[1:], " ")) + " MHz"
+			}
+		}
+	}
+}
+
+func getCpuInfoFromLscpu(ret *model.SystemInfo) {
+	cmd := exec.Command("lscpu", "-B")
+	output, err := cmd.Output()
+	if err != nil {
+		return
+	}
+	var L1dcache, L1icache, L2cache, L3cache string
+	lines := strings.Split(string(output), "\n")
+	for _, line := range lines {
+		fields := strings.Split(line, ":")
+		if len(fields) < 2 {
+			continue
+		}
+		value := strings.TrimSpace(strings.Join(fields[1:], " "))
+		switch {
+		case strings.Contains(fields[0], "Model name") && !strings.Contains(fields[0], "BIOS Model name") && ret.CpuModel == "":
+			ret.CpuModel = value
+		case strings.Contains(fields[0], "CPU MHz") && !strings.Contains(ret.CpuModel, "@") && ret.CpuModel != "":
+			ret.CpuModel += " @ " + value + " MHz"
+		case strings.Contains(fields[0], "L1d cache") || strings.Contains(fields[0], "L1d"):
+			L1dcache = value
+		case strings.Contains(fields[0], "L1i cache") || strings.Contains(fields[0], "L1i"):
+			L1icache = value
+		case strings.Contains(fields[0], "L2 cache") || strings.Contains(fields[0], "L2"):
+			L2cache = value
+		case strings.Contains(fields[0], "L3 cache") || strings.Contains(fields[0], "L3"):
+			L3cache = value
+		}
+	}
+	updateCpuCache(ret, L1dcache, L1icache, L2cache, L3cache)
+}
+
+func updateCpuCache(ret *model.SystemInfo, L1dcache, L1icache, L2cache, L3cache string) {
+	if L1dcache == "" || L1icache == "" || L2cache == "" || L3cache == "" || strings.Contains(ret.CpuCache, "/") {
+		return
+	}
+	bytes1, err1 := strconv.ParseInt(L1dcache, 10, 64)
+	bytes2, err2 := strconv.ParseInt(L1icache, 10, 64)
+	bytes4, err4 := strconv.ParseInt(L2cache, 10, 64)
+	bytes5, err5 := strconv.ParseInt(L3cache, 10, 64)
+	if err1 != nil || err2 != nil || err4 != nil || err5 != nil {
+		return
+	}
+	L1unit, L1size := convertBytes(bytes1 + bytes2)
+	L2unit, L2size := convertBytes(bytes4)
+	L3unit, L3size := convertBytes(bytes5)
+	ret.CpuCache = fmt.Sprintf("L1: %d %s / L2: %d %s / L3: %d %s",
+		L1size, L1unit, L2size, L2unit, L3size, L3unit)
+}
+
+func updateSystemLoad(ret *model.SystemInfo) {
+	if ret.Load != "" {
+		return
+	}
+	var load string
+	out, err := exec.Command("w").Output()
+	if err == nil {
+		loadFields := strings.Fields(string(out))
+		load = strings.Join(loadFields[len(loadFields)-3:], " ")
+	} else {
+		out, err = exec.Command("uptime").Output()
+		if err == nil {
+			fields := strings.Fields(string(out))
+			load = strings.Join(fields[len(fields)-3:], " ")
+		}
+	}
+	if load != "" {
+		ret.Load = load
+	}
+}
+
 func getCpuInfo(ret *model.SystemInfo, cpuType string) (*model.SystemInfo, error) {
-	var aesFeature, virtFeature, hypervFeature string
-	var st bool
 	if runtime.NumCPU() != 0 {
 		ret.CpuCores = fmt.Sprintf("%d %s CPU(s)", runtime.NumCPU(), cpuType)
 	}
-	if runtime.GOOS == "windows" {
-		ci, err := cpu.Info()
-		if err != nil {
-			return nil, fmt.Errorf("cpu.Info error: %v", err.Error())
-		} else {
-			for i := 0; i < len(ci); i++ {
-				if len(ret.CpuModel) < len(ci[i].ModelName) {
-					ret.CpuModel = strings.TrimSpace(ci[i].ModelName)
-				}
-			}
-		}
-		ret.CpuCache = utils.GetCpuCache()
-	} else {
-		// 使用 /proc/cpuinfo 检测信息
-		cpuinfoFile, err := os.Open("/proc/cpuinfo")
-		if err == nil {
-			scanner := bufio.NewScanner(cpuinfoFile)
-			for scanner.Scan() {
-				line := scanner.Text()
-				fields := strings.Split(line, ":")
-				if len(fields) >= 2 {
-					if strings.Contains(fields[0], "model name") {
-						ret.CpuModel = strings.TrimSpace(strings.Join(fields[1:], " "))
-					} else if strings.Contains(fields[0], "cache size") {
-						ret.CpuCache = strings.TrimSpace(strings.Join(fields[1:], " "))
-					} else if strings.Contains(fields[0], "cpu MHz") && !strings.Contains(ret.CpuModel, "@") {
-						ret.CpuModel += " @ " + strings.TrimSpace(strings.Join(fields[1:], " ")) + " MHz"
-					}
-				}
-			}
-		}
-		defer cpuinfoFile.Close()
-		// 使用 lscpu -B 检测信息
-		cmd := exec.Command("lscpu", "-B") // 以字节数为单位查询
-		output, err := cmd.Output()
-		if err == nil {
-			var L1dcache, L1icache, L1cache, L2cache, L3cache string
-			outputStr := string(output)
-			lines := strings.Split(outputStr, "\n")
-			for _, line := range lines {
-				fields := strings.Split(line, ":")
-				if len(fields) >= 2 {
-					if strings.Contains(fields[0], "Model name") && !strings.Contains(fields[0], "BIOS Model name") && ret.CpuModel == "" {
-						ret.CpuModel = strings.TrimSpace(strings.Join(fields[1:], " "))
-					} else if strings.Contains(fields[0], "CPU MHz") && !strings.Contains(ret.CpuModel, "@") && ret.CpuModel != "" {
-						ret.CpuModel += " @ " + strings.TrimSpace(strings.Join(fields[1:], " ")) + " MHz"
-					} else if strings.Contains(fields[0], "L1d cache") || strings.Contains(fields[0], "L1d") {
-						L1dcache = strings.TrimSpace(strings.Join(fields[1:], " "))
-					} else if strings.Contains(fields[0], "L1i cache") || strings.Contains(fields[0], "L1i") {
-						L1icache = strings.TrimSpace(strings.Join(fields[1:], " "))
-					} else if strings.Contains(fields[0], "L2 cache") || strings.Contains(fields[0], "L2") {
-						L2cache = strings.TrimSpace(strings.Join(fields[1:], " "))
-					} else if strings.Contains(fields[0], "L3 cache") || strings.Contains(fields[0], "L3") {
-						L3cache = strings.TrimSpace(strings.Join(fields[1:], " "))
-					}
-				}
-			}
-			if L1dcache != "" && L1icache != "" && L2cache != "" && L3cache != "" && !strings.Contains(ret.CpuCache, "/") {
-				bytes1, err1 := strconv.ParseInt(L1dcache, 10, 64)
-				bytes2, err2 := strconv.ParseInt(L1icache, 10, 64)
-				if err1 == nil && err2 == nil {
-					bytes3 := bytes1 + bytes2
-					unit, size := convertBytes(bytes3)
-					L1cache = fmt.Sprintf("L1: %d %s", size, unit)
-				}
-				bytes4, err4 := strconv.ParseInt(L2cache, 10, 64)
-				if err4 == nil {
-					unit, size := convertBytes(bytes4)
-					L2cache = fmt.Sprintf("L2: %d %s", size, unit)
-				}
-				bytes5, err5 := strconv.ParseInt(L3cache, 10, 64)
-				if err5 == nil {
-					unit, size := convertBytes(bytes5)
-					L3cache = fmt.Sprintf("L3: %d %s", size, unit)
-				}
-				if err1 == nil && err2 == nil && err4 == nil && err5 == nil {
-					ret.CpuCache = L1cache + " / " + L2cache + " / " + L3cache
-				}
-			}
+	switch runtime.GOOS {
+	case "windows":
+		return getWindowsCpuInfo(ret)
+	case "linux":
+		return getLinuxCpuInfo(ret)
+	case "darwin":
+		return getDarwinCpuInfo(ret)
+	default:
+		return getDefaultCpuInfo(ret)
+	}
+}
+
+func getWindowsCpuInfo(ret *model.SystemInfo) (*model.SystemInfo, error) {
+	ci, err := cpu.Info()
+	if err != nil {
+		return nil, fmt.Errorf("cpu.Info error: %v", err.Error())
+	}
+	for i := 0; i < len(ci); i++ {
+		if len(ret.CpuModel) < len(ci[i].ModelName) {
+			ret.CpuModel = strings.TrimSpace(ci[i].ModelName)
 		}
 	}
-	// 使用 /proc/device-tree 获取信息 - 特化适配嵌入式系统
-	deviceTreeContent, err := os.ReadFile("/proc/device-tree")
-	if err == nil && ret.CpuModel == "" {
-		ret.CpuModel = string(deviceTreeContent)
-	}
-	// 获取虚拟化架构
-	if runtime.GOOS == "windows" {
-		aesFeature = `HARDWARE\DESCRIPTION\System\CentralProcessor\0`
-		virtFeature = `HARDWARE\DESCRIPTION\System\CentralProcessor\0`
-		hypervFeature = `SYSTEM\CurrentControlSet\Control\Hypervisor\0`
-	} else if runtime.GOOS == "linux" {
-		aesFeature = "/proc/cpuinfo"
-		virtFeature = "/proc/cpuinfo"
-		hypervFeature = "/proc/cpuinfo"
-	}
+	ret.CpuCache = utils.GetCpuCache()
+	aesFeature := `HARDWARE\DESCRIPTION\System\CentralProcessor\0`
+	virtFeature := `HARDWARE\DESCRIPTION\System\CentralProcessor\0`
+	hypervFeature := `SYSTEM\CurrentControlSet\Control\Hypervisor\0`
 	ret.CpuAesNi, _ = checkCPUFeature(aesFeature, "aes")
+	var st bool
 	ret.CpuVAH, st = checkCPUFeature(virtFeature, "vmx")
 	if !st {
 		ret.CpuVAH, _ = checkCPUFeature(hypervFeature, "hypervisor")
 	}
-	// 使用 sysctl 获取信息 - 特化适配 freebsd openbsd 系统
-	path, exit := utils.GetPATH("sysctl")
-	if exit {
-		if ret.CpuModel == "" || len(ret.CpuModel) < 3 {
-			cname, err := getSysctlValue(path, "hw.model")
-			if err == nil && !strings.Contains(cname, "cannot") {
-				ret.CpuModel = cname
-				// 获取CPU频率
-				freq, err := getSysctlValue(path, "dev.cpu.0.freq")
-				if err == nil && !strings.Contains(freq, "cannot") {
-					ret.CpuModel += " @" + freq + "MHz"
-				}
-			}
-		}
-		if ret.CpuCores == "" {
-			cores, err := getSysctlValue(path, "hw.ncpu")
-			if err == nil && !strings.Contains(cores, "cannot") {
-				ret.CpuCores = fmt.Sprintf("%s %s CPU(s)", cores, cpuType)
-			}
-		}
-		if ret.CpuCache == "" {
-			// 获取CPU缓存配置
-			ccache, err := getSysctlValue(path, "hw.cacheconfig")
-			if err == nil && !strings.Contains(ccache, "cannot") {
-				ret.CpuCache = strings.TrimSpace(strings.Split(ccache, ":")[1])
-			}
-		}
-		aesOut, err := exec.Command(path, "-a").Output()
-		if ret.CpuAesNi == "Unsupported OS" || ret.CpuAesNi == "" {
-			// 检查AES指令集支持
-			var CPU_AES string
-			if err == nil {
-				aesReg := regexp.MustCompile(`crypto\.aesni\s*=\s*(\d)`)
-				aesMatch := aesReg.FindStringSubmatch(string(aesOut))
-				if len(aesMatch) > 1 {
-					CPU_AES = aesMatch[1]
-				} else {
-					aesReg := regexp.MustCompile(`dev\.aesni\.0\.%desc:\s*(.+)`)
-					aesMatch := aesReg.FindStringSubmatch(string(aesOut))
-					if len(aesMatch) > 1 {
-						CPU_AES = aesMatch[1]
-					}
-				}
-				if CPU_AES != "" {
-					if runtime.GOOS == "windows" {
-						ret.CpuAesNi = "[Y] Enabled"
-					} else {
-						ret.CpuAesNi = "✔️ Enabled"
-					}
-				} else {
-					if runtime.GOOS == "windows" {
-						ret.CpuAesNi = "[N] Disabled"
-					} else {
-						ret.CpuAesNi = "❌ Disabled"
-					}
-				}
-			}
-		}
-		if ret.CpuVAH == "Unsupported OS" || ret.CpuVAH == "" {
-			// 检查虚拟化支持
-			var CPU_VIRT string
-			if err == nil {
-				virtReg := regexp.MustCompile(`(hw\.vmx|hw\.svm)\s*=\s*(\d)`)
-				virtMatch := virtReg.FindStringSubmatch(string(aesOut))
-				if len(virtMatch) > 2 {
-					CPU_VIRT = virtMatch[2]
-				}
-				if CPU_VIRT != "" {
-					if runtime.GOOS == "windows" {
-						ret.CpuVAH = "[Y] Enabled"
-					} else {
-						ret.CpuVAH = "✔️ Enabled"
-					}
-				} else {
-					if runtime.GOOS == "windows" {
-						ret.CpuVAH = "[N] Disabled"
-					} else {
-						ret.CpuVAH = "❌ Disabled"
-					}
-				}
-			}
-		}
-		if ret.Uptime == "" {
-			// 获取系统运行时间
-			boottimeStr, err := getSysctlValue(path, "kern.boottime")
-			if err == nil {
-				boottimeReg := regexp.MustCompile(`sec = (\d+), usec = (\d+)`)
-				boottimeMatch := boottimeReg.FindStringSubmatch(boottimeStr)
-				if len(boottimeMatch) > 1 {
-					boottime, err := strconv.ParseInt(boottimeMatch[1], 10, 64)
-					if err == nil {
-						uptime := time.Now().Unix() - boottime
-						days := uptime / 86400
-						hours := (uptime % 86400) / 3600
-						minutes := (uptime % 3600) / 60
-						ret.Uptime = fmt.Sprintf("%d days, %d hours, %d minutes", days, hours, minutes)
-					}
-				}
-			}
-		}
+	return ret, nil
+}
+
+func getLinuxCpuInfo(ret *model.SystemInfo) (*model.SystemInfo, error) {
+	getCpuInfoFromProcCpuinfo(ret)
+	getCpuInfoFromLscpu(ret)
+	deviceTreeContent, err := os.ReadFile("/proc/device-tree")
+	if err == nil && ret.CpuModel == "" {
+		ret.CpuModel = string(deviceTreeContent)
 	}
-	if ret.Load == "" {
-		// 获取系统负载
-		var load string
-		out, err := exec.Command("w").Output()
-		if err == nil {
-			loadFields := strings.Fields(string(out))
-			load = loadFields[len(loadFields)-3] + " " + loadFields[len(loadFields)-2] + " " + loadFields[len(loadFields)-1]
-		} else {
-			out, err = exec.Command("uptime").Output()
-			if err == nil {
-				fields := strings.Fields(string(out))
-				load = fields[len(fields)-3] + " " + fields[len(fields)-2] + " " + fields[len(fields)-1]
-			}
-		}
-		if load != "" {
-			ret.Load = load
-		}
+	ret.CpuAesNi, _ = checkCPUFeature("/proc/cpuinfo", "aes")
+	var st bool
+	ret.CpuVAH, st = checkCPUFeature("/proc/cpuinfo", "vmx")
+	if !st {
+		ret.CpuVAH, _ = checkCPUFeature("/proc/cpuinfo", "hypervisor")
 	}
-	// MAC需要额外获取信息进行判断
-	if runtime.GOOS == "darwin" {
-		if len(model.MacOSInfo) > 0 {
-			for _, line := range model.MacOSInfo {
-				if strings.Contains(line, "Chip") && ret.CpuModel == "" {
-					ret.CpuModel = strings.TrimSpace(strings.Split(line, ":")[1])
-				}
-				if strings.Contains(line, "Total Number of Cores") && ret.CpuCores == "" {
-					ret.CpuCores = strings.TrimSpace(strings.Split(line, ":")[1])
-				}
-				if strings.Contains(line, "Memory") && ret.MemoryTotal == "" {
-					ret.MemoryTotal = strings.TrimSpace(strings.Split(line, ":")[1])
-				}
+	updateSystemLoad(ret)
+	return ret, nil
+}
+
+func getDarwinCpuInfo(ret *model.SystemInfo) (*model.SystemInfo, error) {
+	if len(model.MacOSInfo) > 0 {
+		for _, line := range model.MacOSInfo {
+			if strings.Contains(line, "Chip") && ret.CpuModel == "" {
+				ret.CpuModel = strings.TrimSpace(strings.Split(line, ":")[1])
+			}
+			if strings.Contains(line, "Total Number of Cores") && ret.CpuCores == "" {
+				ret.CpuCores = strings.TrimSpace(strings.Split(line, ":")[1])
+			}
+			if strings.Contains(line, "Memory") && ret.MemoryTotal == "" {
+				ret.MemoryTotal = strings.TrimSpace(strings.Split(line, ":")[1])
 			}
 		}
 	}
 	return ret, nil
+}
+
+func getDefaultCpuInfo(ret *model.SystemInfo) (*model.SystemInfo, error) {
+	path, exists := utils.GetPATH("sysctl")
+	if !exists {
+		return ret, nil
+	}
+	updateSysctlCpuInfo(ret, path)
+	updateSysctlFeatures(ret, path)
+	updateSysctlUptime(ret, path)
+	updateSystemLoad(ret)
+	return ret, nil
+}
+
+func updateSysctlCpuInfo(ret *model.SystemInfo, sysctlPath string) {
+	if ret.CpuModel == "" || len(ret.CpuModel) < 3 {
+		cname, err := getSysctlValue(sysctlPath, "hw.model")
+		if err == nil && !strings.Contains(cname, "cannot") {
+			ret.CpuModel = cname
+			freq, err := getSysctlValue(sysctlPath, "dev.cpu.0.freq")
+			if err == nil && !strings.Contains(freq, "cannot") {
+				ret.CpuModel += " @" + freq + "MHz"
+			}
+		}
+	}
+	if ret.CpuCores == "" {
+		cores, err := getSysctlValue(sysctlPath, "hw.ncpu")
+		if err == nil && !strings.Contains(cores, "cannot") {
+			ret.CpuCores = cores + " CPU(s)"
+		}
+	}
+	if ret.CpuCache == "" {
+		ccache, err := getSysctlValue(sysctlPath, "hw.cacheconfig")
+		if err == nil && !strings.Contains(ccache, "cannot") {
+			ret.CpuCache = strings.TrimSpace(strings.Split(ccache, ":")[1])
+		}
+	}
+}
+
+func updateSysctlFeatures(ret *model.SystemInfo, sysctlPath string) {
+	aesOut, err := exec.Command(sysctlPath, "-a").Output()
+	if err != nil {
+		return
+	}
+	if ret.CpuAesNi == "Unsupported OS" || ret.CpuAesNi == "" {
+		updateAesFeature(ret, string(aesOut))
+	}
+	if ret.CpuVAH == "Unsupported OS" || ret.CpuVAH == "" {
+		updateVirtualizationFeature(ret, string(aesOut))
+	}
+}
+
+func updateAesFeature(ret *model.SystemInfo, output string) {
+	aesReg := regexp.MustCompile(`crypto\.aesni\s*=\s*(\d)`)
+	aesMatch := aesReg.FindStringSubmatch(output)
+	if len(aesMatch) <= 1 {
+		aesReg = regexp.MustCompile(`dev\.aesni\.0\.%desc:\s*(.+)`)
+		aesMatch = aesReg.FindStringSubmatch(output)
+	}
+	if len(aesMatch) > 1 {
+		ret.CpuAesNi = getFeatureStatus(true)
+	} else {
+		ret.CpuAesNi = getFeatureStatus(false)
+	}
+}
+
+func updateVirtualizationFeature(ret *model.SystemInfo, output string) {
+	virtReg := regexp.MustCompile(`(hw\.vmx|hw\.svm)\s*=\s*(\d)`)
+	virtMatch := virtReg.FindStringSubmatch(output)
+	if len(virtMatch) > 2 {
+		ret.CpuVAH = getFeatureStatus(true)
+	} else {
+		ret.CpuVAH = getFeatureStatus(false)
+	}
+}
+
+func getFeatureStatus(enabled bool) string {
+	if enabled {
+		if runtime.GOOS == "windows" {
+			return "[Y] Enabled"
+		}
+		return "✔️ Enabled"
+	}
+	if runtime.GOOS == "windows" {
+		return "[N] Disabled"
+	}
+	return "❌ Disabled"
+}
+
+func updateSysctlUptime(ret *model.SystemInfo, sysctlPath string) {
+	if ret.Uptime != "" {
+		return
+	}
+	boottimeStr, err := getSysctlValue(sysctlPath, "kern.boottime")
+	if err != nil {
+		return
+	}
+	boottimeReg := regexp.MustCompile(`sec = (\d+), usec = (\d+)`)
+	boottimeMatch := boottimeReg.FindStringSubmatch(boottimeStr)
+	if len(boottimeMatch) <= 1 {
+		return
+	}
+	boottime, err := strconv.ParseInt(boottimeMatch[1], 10, 64)
+	if err != nil {
+		return
+	}
+	uptime := time.Now().Unix() - boottime
+	days := uptime / 86400
+	hours := (uptime % 86400) / 3600
+	minutes := (uptime % 3600) / 60
+	ret.Uptime = fmt.Sprintf("%d days, %d hours, %d minutes", days, hours, minutes)
 }

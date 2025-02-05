@@ -100,6 +100,8 @@ jobs:
             goarch: mipsle
           - goos: linux
             goarch: mips
+          - goos: linux
+            goarch: s390x
           - goos: freebsd
             goarch: arm64
           - goos: freebsd

@@ -136,11 +136,11 @@ func getCpuInfoFromLscpu(ret *model.SystemInfo) {
 		switch {
 		case strings.Contains(fields[0], "Model name") && !strings.Contains(fields[0], "BIOS Model name") && ret.CpuModel == "":
 			ret.CpuModel = strings.Join(strings.Fields(value), " ")
-		case strings.Contains(fields[0], "CPU MHz") && !hasFrequency(ret.CpuModel):
+		case strings.Contains(fields[0], "CPU MHz") && !hasFrequency(ret.CpuModel) && !strings.Contains(ret.CpuModel, "@"):
     			ret.CpuModel = strings.Join(strings.Fields(ret.CpuModel+" @"+value+" MHz"), " ")
-		case strings.Contains(fields[0], "CPU static MHz") && !hasFrequency(ret.CpuModel):
+		case strings.Contains(fields[0], "CPU static MHz") && !hasFrequency(ret.CpuModel) && !strings.Contains(ret.CpuModel, "@"):
 			ret.CpuModel += " @ " + value + " static MHz"
-		case strings.Contains(fields[0], "CPU dynamic MHz") && !hasFrequency(ret.CpuModel):
+		case strings.Contains(fields[0], "CPU dynamic MHz") && !hasFrequency(ret.CpuModel) && !strings.Contains(ret.CpuModel, "@"):
 			ret.CpuModel += " @ " + value + " dynamic MHz"
 		case strings.Contains(fields[0], "L1d cache") || strings.Contains(fields[0], "L1d"):
 			L1dcache = strings.Split(value, " ")[0]

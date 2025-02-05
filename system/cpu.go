@@ -16,6 +16,11 @@ import (
 	"github.com/shirou/gopsutil/v4/cpu"
 )
 
+func hasFrequency(model string) bool {
+    matched, _ := regexp.MatchString(`@\s*\d+\.?\d*\s*(GHz|MHz)`, model)
+    return matched
+}
+
 func checkCPUFeatureLinux(filename string, feature string) (string, bool) {
 	if feature == "hypervisor" {
 		cmd := exec.Command("lscpu", "-B")
@@ -95,17 +100,22 @@ func getCpuInfoFromProcCpuinfo(ret *model.SystemInfo) {
 			value := strings.TrimSpace(strings.Join(fields[1:], " "))
 			switch {
 			case strings.Contains(key, "model name"):
-				ret.CpuModel = value
+				ret.CpuModel = strings.Join(strings.Fields(value), " ")
 				modelNameFound = true
 			case strings.Contains(key, "cache size"):
 				ret.CpuCache = value
 			case strings.Contains(key, "cpu MHz"):
 				cpuMHz = value
+			case strings.Contains(key, "cpu GHz"):
+				cpuGHz = value
 			}
 		}
 	}
-	if modelNameFound && cpuMHz != "" && !strings.Contains(ret.CpuModel, "@") {
-		ret.CpuModel += " @ " + cpuMHz + " MHz"
+	if modelNameFound && cpuMHz != "" && !hasFrequency(ret.CpuModel) {
+	    ret.CpuModel = strings.Join(strings.Fields(ret.CpuModel+" @"+cpuMHz+" MHz"), " ")
+	}
+	if modelNameFound && cpuGHz != "" && !hasFrequency(ret.CpuModel) {
+	    ret.CpuModel = strings.Join(strings.Fields(ret.CpuModel+" @"+cpuGHz+" GHz"), " ")
 	}
 }
 
@@ -125,12 +135,12 @@ func getCpuInfoFromLscpu(ret *model.SystemInfo) {
 		value := strings.TrimSpace(strings.Join(fields[1:], " "))
 		switch {
 		case strings.Contains(fields[0], "Model name") && !strings.Contains(fields[0], "BIOS Model name") && ret.CpuModel == "":
-			ret.CpuModel = value
-		case strings.Contains(fields[0], "CPU MHz") && !strings.Contains(ret.CpuModel, "@"):
-			ret.CpuModel += " @ " + value + " MHz"
-		case strings.Contains(fields[0], "CPU static MHz") && !strings.Contains(ret.CpuModel, "@"):
+			ret.CpuModel = strings.Join(strings.Fields(value), " ")
+		case strings.Contains(fields[0], "CPU MHz") && !hasFrequency(ret.CpuModel):
+    			ret.CpuModel = strings.Join(strings.Fields(ret.CpuModel+" @"+value+" MHz"), " ")
+		case strings.Contains(fields[0], "CPU static MHz") && !hasFrequency(ret.CpuModel):
 			ret.CpuModel += " @ " + value + " static MHz"
-		case strings.Contains(fields[0], "CPU dynamic MHz") && !strings.Contains(ret.CpuModel, "@"):
+		case strings.Contains(fields[0], "CPU dynamic MHz") && !hasFrequency(ret.CpuModel):
 			ret.CpuModel += " @ " + value + " dynamic MHz"
 		case strings.Contains(fields[0], "L1d cache") || strings.Contains(fields[0], "L1d"):
 			L1dcache = value
@@ -225,7 +235,7 @@ func getWindowsCpuInfo(ret *model.SystemInfo) (*model.SystemInfo, error) {
 	}
 	for i := 0; i < len(ci); i++ {
 		if len(ret.CpuModel) < len(ci[i].ModelName) {
-			ret.CpuModel = strings.TrimSpace(ci[i].ModelName)
+			ret.CpuModel = strings.Join(strings.Fields(strings.TrimSpace(ci[i].ModelName)), " ")
 		}
 	}
 	ret.CpuCache = utils.GetCpuCache()
@@ -247,18 +257,21 @@ func getLinuxCpuInfo(ret *model.SystemInfo) (*model.SystemInfo, error) {
 	ci, err := cpu.Info()
 	if err == nil {
 		for i := 0; i < len(ci); i++ {
-			newModel := strings.TrimSpace(ci[i].ModelName)
-			if strings.Contains(ret.CpuModel, "@") && len(ret.CpuModel[:strings.Index(ret.CpuModel, "@")]) < len(ci[i].ModelName) {
-				freqPart := ret.CpuModel[strings.Index(ret.CpuModel, "@"):]
-				ret.CpuModel = newModel + " " + freqPart
-			} else {
-				ret.CpuModel = newModel
-			}
+		    newModel := strings.TrimSpace(ci[i].ModelName)
+		    // 如果当前型号没有频率信息，且已有型号包含频率
+		    if !hasFrequency(newModel) && hasFrequency(ret.CpuModel) {
+		        // 保留现有带频率的型号
+		        continue
+		    }
+		    // 如果新型号更完整
+		    if len(newModel) > len(ret.CpuModel) || hasFrequency(newModel) {
+		        ret.CpuModel = strings.Join(strings.Fields(newModel), " ")
+		    }
 		}
 	}
 	deviceTreeContent, err := os.ReadFile("/proc/device-tree")
 	if err == nil && ret.CpuModel == "" {
-		ret.CpuModel = string(deviceTreeContent)
+		ret.CpuModel = strings.Join(strings.Fields(string(deviceTreeContent)), " ")
 	}
 	ret.CpuAesNi, _ = checkCPUFeature("/proc/cpuinfo", "aes")
 	var st bool
@@ -303,7 +316,7 @@ func updateSysctlCpuInfo(ret *model.SystemInfo, sysctlPath string) {
 	if ret.CpuModel == "" || len(ret.CpuModel) < 3 {
 		cname, err := getSysctlValue(sysctlPath, "hw.model")
 		if err == nil && !strings.Contains(cname, "cannot") {
-			ret.CpuModel = cname
+			ret.CpuModel = strings.Join(strings.Fields(cname), " ")
 			freq, err := getSysctlValue(sysctlPath, "dev.cpu.0.freq")
 			if err == nil && !strings.Contains(freq, "cannot") {
 				ret.CpuModel += " @" + freq + "MHz"

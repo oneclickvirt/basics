@@ -143,13 +143,13 @@ func getCpuInfoFromLscpu(ret *model.SystemInfo) {
 		case strings.Contains(fields[0], "CPU dynamic MHz") && !hasFrequency(ret.CpuModel):
 			ret.CpuModel += " @ " + value + " dynamic MHz"
 		case strings.Contains(fields[0], "L1d cache") || strings.Contains(fields[0], "L1d"):
-			L1dcache = value
+			L1dcache = strings.Split(value, " ")[0]
 		case strings.Contains(fields[0], "L1i cache") || strings.Contains(fields[0], "L1i"):
-			L1icache = value
+			L1icache = strings.Split(value, " ")[0]
 		case strings.Contains(fields[0], "L2 cache") || strings.Contains(fields[0], "L2"):
-			L2cache = value
+			L2cache = strings.Split(value, " ")[0]
 		case strings.Contains(fields[0], "L3 cache") || strings.Contains(fields[0], "L3"):
-			L3cache = value
+			L3cache = strings.Split(value, " ")[0]
 		}
 	}
 	// 在实在找不到型号的时候，直接输出CPU制造的厂商

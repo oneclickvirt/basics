@@ -46,11 +46,11 @@ basics
 
 ```
 Usage: basics [options]
-  -e    Enable logging
-  -h    Show help information
+  -log    Enable logging
+  -h      Show help information
   -l string
-        Set language (en or zh)
-  -v    Show version
+          Set language (en or zh)
+  -v      Show version
 ```
 
 ![图片](https://github.com/oneclickvirt/basics/assets/103393591/634064de-17a6-485f-b401-dc3a159a18c4)

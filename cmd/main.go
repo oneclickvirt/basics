@@ -20,7 +20,7 @@ func main() {
 	basicsFlag := flag.NewFlagSet("basics", flag.ContinueOnError)
 	basicsFlag.BoolVar(&help, "h", false, "Show help information")
 	basicsFlag.BoolVar(&showVersion, "v", false, "Show version")
-	basicsFlag.BoolVar(&model.EnableLoger, "e", false, "Enable logging")
+	basicsFlag.BoolVar(&model.EnableLoger, "log", false, "Enable logging")
 	basicsFlag.StringVar(&language, "l", "", "Set language (en or zh)")
 	basicsFlag.Parse(os.Args[1:])
 	if help {

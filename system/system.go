@@ -136,7 +136,7 @@ func CheckSystemInfo(language string) string {
 			res += " 气球驱动            : " + ret.VirtioBalloon + "\n"
 		}
 		if ret.KSM != "" {
-			res += " 内存同页合并        : " + ret.KSM + "\n"
+			res += " 内核页合并          : " + ret.KSM + "\n"
 		}
 		if ret.SwapTotal == "" && ret.SwapUsage == "" {
 			res += " 虚拟内存 Swap       : [ no swap partition or swap file detected ]" + "\n"

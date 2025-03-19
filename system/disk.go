@@ -12,9 +12,37 @@ import (
 // getDiskInfo 获取硬盘信息
 func getDiskInfo() (string, string, string, string, error) {
 	var diskTotalStr, diskUsageStr, percentageStr, bootPath string
+
+	// BSD系统特殊处理
+	if runtime.GOOS == "freebsd" || runtime.GOOS == "openbsd" || runtime.GOOS == "netbsd" {
+		cmd := exec.Command("df", "-h", "/")
+		output, err := cmd.Output()
+		if err == nil {
+			lines := strings.Split(string(output), "\n")
+			if len(lines) >= 2 {
+				fields := strings.Fields(lines[1])
+				if len(fields) >= 5 {
+					bootPath = fields[0]
+					diskTotalStr = fields[1]
+					diskUsageStr = fields[2]
+					percentageStr = fields[4]
+
+					// 两个%避免被转义
+					if percentageStr != "" && strings.Contains(percentageStr, "%") {
+						percentageStr = strings.ReplaceAll(percentageStr, "%", "%%")
+					}
+
+					return diskTotalStr, diskUsageStr, percentageStr, bootPath, nil
+				}
+			}
+		}
+	}
+
+	// 保持原有代码逻辑
 	tempDiskTotal, tempDiskUsage := getDiskTotalAndUsed()
 	diskTotalGB := float64(tempDiskTotal) / (1024 * 1024 * 1024)
 	diskUsageGB := float64(tempDiskUsage) / (1024 * 1024 * 1024)
+
 	// 字节为单位 进行单位转换
 	if diskTotalGB < 1 {
 		diskTotalStr = strconv.FormatFloat(diskTotalGB*1024, 'f', 2, 64) + " MB"
@@ -26,6 +54,7 @@ func getDiskInfo() (string, string, string, string, error) {
 	} else {
 		diskUsageStr = strconv.FormatFloat(diskUsageGB, 'f', 2, 64) + " GB"
 	}
+
 	if runtime.GOOS == "windows" {
 		parts, err := disk.Partitions(true)
 		if err != nil {
@@ -86,6 +115,7 @@ func getDiskInfo() (string, string, string, string, error) {
 			}
 		}
 	}
+
 	// 两个%避免被转义
 	if percentageStr != "" && strings.Contains(percentageStr, "%") {
 		percentageStr = strings.ReplaceAll(percentageStr, "%", "%%")
@@ -111,9 +141,18 @@ func getDiskTotalAndUsed() (total uint64, used uint64) {
 			used += diskUsageOf.Used
 		}
 	}
-	// Fallback 到这个方法,仅统计根路径,适用于OpenVZ之类的.
-	if runtime.GOOS == "linux" && total == 0 && used == 0 {
-		cmd := exec.Command("df")
+
+	// Fallback 到根路径的获取方法
+	if total == 0 && used == 0 {
+		var cmd *exec.Cmd
+
+		// BSD系统使用特定参数
+		if runtime.GOOS == "freebsd" || runtime.GOOS == "openbsd" || runtime.GOOS == "netbsd" {
+			cmd = exec.Command("df", "-k", "/")
+		} else {
+			cmd = exec.Command("df")
+		}
+
 		out, err := cmd.CombinedOutput()
 		if err == nil {
 			s := strings.Split(string(out), "\n")
@@ -126,6 +165,16 @@ func getDiskTotalAndUsed() (total uint64, used uint64) {
 						// 默认获取的是1K块为单位的.
 						total = total * 1024
 						used = used * 1024
+						break
+					}
+				} else if len(info) == 5 && (runtime.GOOS == "freebsd" || runtime.GOOS == "openbsd" || runtime.GOOS == "netbsd") {
+					// BSD系统df输出格式可能只有5列
+					if info[4] == "/" {
+						total, _ = strconv.ParseUint(info[1], 0, 64)
+						used, _ = strconv.ParseUint(info[2], 0, 64)
+						total = total * 1024
+						used = used * 1024
+						break
 					}
 				}
 			}

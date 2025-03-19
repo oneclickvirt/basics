@@ -85,11 +85,14 @@ func getMemoryInfo() (string, string, string, string, string, string) {
 			} else {
 				virtioBalloonStatus = "✔️ Enabled"
 			}
-		} else {
-			virtioBalloonStatus = ""
 		}
-	} else {
-		virtioBalloonStatus = ""
+	}
+	if virtioBalloonStatus == "" {
+		if runtime.GOOS == "windows" {
+			virtioBalloonStatus = "[N] Undetected"
+		} else {
+			virtioBalloonStatus = "❌ Undetected"
+		}
 	}
 	ksmStatus, err := os.ReadFile("/sys/kernel/mm/ksm/run")
 	if err == nil {
@@ -99,11 +102,14 @@ func getMemoryInfo() (string, string, string, string, string, string) {
 			} else {
 				KernelSamepageMerging = "✔️ Enabled"
 			}
-		} else {
-			KernelSamepageMerging = ""
 		}
-	} else {
-		KernelSamepageMerging = ""
+	}
+	if KernelSamepageMerging == "" {
+		if runtime.GOOS == "windows" {
+			KernelSamepageMerging = "[N] Undetected"
+		} else {
+			KernelSamepageMerging = "❌ Undetected"
+		}
 	}
 	return memoryTotalStr, memoryUsageStr, swapTotalStr, swapUsageStr, virtioBalloonStatus, KernelSamepageMerging
 }

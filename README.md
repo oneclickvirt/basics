@@ -16,6 +16,10 @@ Include: https://github.com/oneclickvirt/gostun
 - [x] 部分Windows10系统下打勾打叉编码错误显示，已判断是Win时使用Y/N显示而不是勾叉
 - [x] 检测GPU相关信息，参考[ghw](https://github.com/jaypipes/ghw)
 
+## TODO
+
+- [ ] 目前IPV4的CIDR已加入识别，IPV6的CIDR待处理加入识别
+
 ## Usage
 
 下载及安装

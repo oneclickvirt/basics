@@ -7,8 +7,9 @@ require (
 	github.com/jaypipes/ghw v0.12.0
 	github.com/json-iterator/go v1.1.12
 	github.com/libp2p/go-nat v0.2.0
+	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
 	github.com/oneclickvirt/defaultset v0.0.2-20240624082446
-	github.com/oneclickvirt/gostun v0.0.3-20240702054621
+	github.com/oneclickvirt/gostun v0.0.3-20250329105202
 	github.com/shirou/gopsutil/v4 v4.24.5
 	github.com/yusufpapurcu/wmi v1.2.4
 	golang.org/x/sys v0.21.0

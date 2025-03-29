@@ -62,10 +62,12 @@ github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421 h1:ZqeYNhU3OH
 github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421/go.mod h1:6dJC0mAP4ikYIbvyc7fijjWJddQyLn8Ig3JB5CqoB9Q=
 github.com/modern-go/reflect2 v1.0.2 h1:xBagoLtFs94CBntxluKeaWgTMpvLxC4ur3nMaC9Gz0M=
 github.com/modern-go/reflect2 v1.0.2/go.mod h1:yWuevngMOJpCy52FWWMvUC8ws7m/LJsjYzDa0/r8luk=
+github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 h1:zYyBkD/k9seD2A7fsi6Oo2LfFZAehjjQMERAvZLEDnQ=
+github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646/go.mod h1:jpp1/29i3P1S/RLdc7JQKbRpFeM1dOBd8T9ki5s+AY8=
 github.com/oneclickvirt/defaultset v0.0.2-20240624082446 h1:5Pg3mK/u/vQvSz7anu0nxzrNdELi/AcDAU1mMsmPzyc=
 github.com/oneclickvirt/defaultset v0.0.2-20240624082446/go.mod h1:e9Jt4tf2sbemCtc84/XgKcHy9EZ2jkc5x2sW1NiJS+E=
-github.com/oneclickvirt/gostun v0.0.3-20240702054621 h1:IE89eEYV9TJbF94SakQDAxTLIaqX+Tb6ZhJ/CCIP+90=
-github.com/oneclickvirt/gostun v0.0.3-20240702054621/go.mod h1:f7DPEXAxbmwXSW33dbxtb0/KzqvOBWhTs2Or5xBerQA=
+github.com/oneclickvirt/gostun v0.0.3-20250329105202 h1:aJ6E91Lp94lq8iWRcCaxpXTjqOOaWvufr5oras6cFtM=
+github.com/oneclickvirt/gostun v0.0.3-20250329105202/go.mod h1:f7DPEXAxbmwXSW33dbxtb0/KzqvOBWhTs2Or5xBerQA=
 github.com/onsi/ginkgo/v2 v2.19.0 h1:9Cnnf7UHo57Hy3k6/m5k3dRfGTMXGvxhHFvkDTCTpvA=
 github.com/onsi/ginkgo/v2 v2.19.0/go.mod h1:rlwLi9PilAFJ8jCg9UE1QP6VBpd6/xj3SRC0d6TU0To=
 github.com/onsi/gomega v1.33.1 h1:dsYjIxxSR755MDmKVsaFQTE22ChNBcuuTWgkUDSubOk=

@@ -2,7 +2,6 @@ package network
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/oneclickvirt/basics/model"
 	"github.com/oneclickvirt/basics/network/baseinfo"
@@ -10,35 +9,43 @@ import (
 )
 
 // sortAndTranslateText 对原始文本进行排序和翻译
-func sortAndTranslateText(orginList []string, language string, fields []string) string {
-	var result string
-	for _, key := range fields {
-		var displayKey string
-		if language == "zh" {
-			displayKey = model.TranslationMap[key]
-			if displayKey == "" {
-				displayKey = key
-			}
-		} else {
-			displayKey = key
-		}
-		for _, line := range orginList {
-			if strings.Contains(line, key) {
-				if displayKey == key {
-					result = result + line + "\n"
-				} else {
-					result = result + strings.ReplaceAll(line, key, displayKey) + "\n"
-				}
-				break
-			}
-		}
-	}
-	return result
-}
+// func sortAndTranslateText(orginList []string, language string, fields []string) string {
+// 	var result string
+// 	for _, key := range fields {
+// 		var displayKey string
+// 		if language == "zh" {
+// 			displayKey = model.TranslationMap[key]
+// 			if displayKey == "" {
+// 				displayKey = key
+// 			}
+// 		} else {
+// 			displayKey = key
+// 		}
+// 		for _, line := range orginList {
+// 			if strings.Contains(line, key) {
+// 				if displayKey == key {
+// 					result = result + line + "\n"
+// 				} else {
+// 					result = result + strings.ReplaceAll(line, key, displayKey) + "\n"
+// 				}
+// 				break
+// 			}
+// 		}
+// 	}
+// 	return result
+// }
 
 // processPrintIPInfo 处理IP信息
-func processPrintIPInfo(headASNString string, headLocationString string, ipResult *model.IpInfo) string {
+func processPrintIPInfo(ipVersion string, ipResult *model.IpInfo) string {
 	var info string
+	var headASNString, headLocationString string
+	if ipVersion == "ipv4" {
+		headASNString = " IPV4 ASN            : "
+		headLocationString = " IPV4 Location       : "
+	} else if ipVersion == "ipv6" {
+		headASNString = " IPV6 ASN            : "
+		headLocationString = " IPV6 Location       : "
+	}
 	// 处理ASN信息
 	if ipResult.ASN != "" || ipResult.Org != "" {
 		info += headASNString
@@ -64,6 +71,14 @@ func processPrintIPInfo(headASNString string, headLocationString string, ipResul
 		}
 		info += "\n"
 	}
+	// 仅处理 IPv4 的邻居信息
+	if ipVersion == "ipv4" && ipResult.Ip != "" {
+		prefixNum := baseinfo.GetCIDRPrefix(ipResult.Ip) 
+		neighborActive, neighborTotal, err := baseinfo.GetNeighborCount(ipResult.Ip, prefixNum)
+		if err == nil {
+			info += fmt.Sprintf(" IPV4 Active IPs     : %d/%d (CIDR /%d)\n", neighborActive, neighborTotal, prefixNum)
+		}
+	}
 	return info
 }
 
@@ -82,10 +97,10 @@ func NetworkCheck(checkType string, enableSecurityCheck bool, language string) (
 			Logger.Info(err.Error())
 		}
 		if ipInfoV4Result != nil {
-			ipInfo += processPrintIPInfo(" IPV4 ASN            : ", " IPV4 Location       : ", ipInfoV4Result)
+			ipInfo += processPrintIPInfo("ipv4", ipInfoV4Result)
 		}
 		if ipInfoV6Result != nil {
-			ipInfo += processPrintIPInfo(" IPV6 ASN            : ", " IPV6 Location       : ", ipInfoV6Result)
+			ipInfo += processPrintIPInfo("ipv6", ipInfoV6Result)
 		}
 		return ipInfo, "", nil
 	} else if checkType == "ipv4" {
@@ -94,7 +109,7 @@ func NetworkCheck(checkType string, enableSecurityCheck bool, language string) (
 			Logger.Info(err.Error())
 		}
 		if ipInfoV4Result != nil {
-			ipInfo += processPrintIPInfo(" IPV4 ASN            : ", " IPV4 Location       : ", ipInfoV4Result)
+			ipInfo += processPrintIPInfo("ipv4", ipInfoV4Result)
 		}
 		return ipInfo, "", nil
 	} else if checkType == "ipv6" {
@@ -103,7 +118,7 @@ func NetworkCheck(checkType string, enableSecurityCheck bool, language string) (
 			Logger.Info(err.Error())
 		}
 		if ipInfoV6Result != nil {
-			ipInfo += processPrintIPInfo(" IPV6 ASN            : ", " IPV6 Location       : ", ipInfoV6Result)
+			ipInfo += processPrintIPInfo("ipv6", ipInfoV6Result)
 		}
 		return ipInfo, "", nil
 	}

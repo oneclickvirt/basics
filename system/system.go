@@ -115,6 +115,7 @@ func CheckSystemInfo(language string) string {
 		if ret.TcpAccelerationMethod != "" {
 			res += " Tcp Accelerate      : " + ret.TcpAccelerationMethod + "\n"
 		}
+
 	} else if language == "zh" {
 		res += " CPU 型号            : " + ret.CpuModel + "\n"
 		res += " CPU 数量            : " + ret.CpuCores + "\n"

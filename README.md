@@ -55,9 +55,9 @@ Usage: basics [options]
   -v      Show version
 ```
 
-![图片](https://github.com/oneclickvirt/basics/assets/103393591/634064de-17a6-485f-b401-dc3a159a18c4)
+![1743249785020](https://github.com/user-attachments/assets/061e9dbe-7382-46b6-bc16-57e0b0df2ee5)
 
-![图片](https://github.com/oneclickvirt/basics/assets/103393591/49404a18-1717-4875-b50d-26a930238248)
+![1743249724033](https://github.com/user-attachments/assets/99e9741d-cbc2-40b2-aacc-2afdaeb6652a)
 
 ## 卸载
 

@@ -19,6 +19,7 @@ Include: https://github.com/oneclickvirt/gostun
 ## TODO
 
 - [ ] 目前IPV4的CIDR已加入识别，IPV6的CIDR待处理加入识别
+- [ ] 适配MACOS系统的识别
 
 ## Usage
 

@@ -45,23 +45,26 @@ func GetCIDRPrefix(ip string) int {
 			}
 		}
 	}
+	if model.EnableLoger {
+		Logger.Info("Can not find ipv4 cidr, use default /24")
+	}
 	return 24
 }
 
 func GetNeighborCount(ip string, prefixNum int) (int, int, error) {
+	if ip == "" {
+		return 0, 0, fmt.Errorf("IP address cannot be empty")
+	}
+	if prefixNum < 0 || prefixNum > 32 {
+		return 0, 0, fmt.Errorf("prefixNum must be between 0 and 32")
+	}
 	client := req.C()
 	client.ImpersonateChrome()
 	cidrBase := fmt.Sprintf("%s/%d", ip, prefixNum)
 	neighborTotal := int(math.Pow(2, float64(32-prefixNum)))
 	neighborActive, err := countActiveIPs(client, fmt.Sprintf("https://bgp.tools/pfximg/%s", cidrBase))
 	if err != nil {
-		if model.EnableLoger {
-			Logger.Info(fmt.Sprintf("Error counting active IPs for CIDR %s: %s", cidrBase, err.Error()))
-		}
 		return 0, 0, err
-	}
-	if model.EnableLoger {
-		Logger.Info(fmt.Sprintf("Active IPs: %d/%d", neighborActive, neighborTotal))
 	}
 	return neighborActive, neighborTotal, nil
 }
@@ -69,38 +72,23 @@ func GetNeighborCount(ip string, prefixNum int) (int, int, error) {
 func countActiveIPs(client *req.Client, url string) (int, error) {
 	resp, err := client.R().Get(url)
 	if err != nil {
-		if model.EnableLoger {
-			Logger.Info(fmt.Sprintf("Error sending request to %s: %s", url, err.Error()))
-		}
 		return 0, err
 	}
 	if !resp.IsSuccessState() {
-		if model.EnableLoger {
-			Logger.Info(fmt.Sprintf("HTTP request failed for %s: %s", url, resp.Status))
-		}
 		return 0, fmt.Errorf("HTTP request failed: %s", resp.Status)
 	}
 	// 读取 PNG 数据到内存
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
-		if model.EnableLoger {
-			Logger.Info(fmt.Sprintf("Error reading PNG data from %s: %s", url, err.Error()))
-		}
 		return 0, err
 	}
 	// 确保数据正确
 	if len(data) < 8 || !bytes.HasPrefix(data, []byte("\x89PNG\r\n\x1a\n")) {
-		if model.EnableLoger {
-			Logger.Info(fmt.Sprintf("Invalid PNG format received from %s", url))
-		}
 		return 0, fmt.Errorf("invalid PNG format")
 	}
 	// 解码 PNG
 	img, err := png.Decode(bytes.NewReader(data))
 	if err != nil {
-		if model.EnableLoger {
-			Logger.Info(fmt.Sprintf("Failed to decode PNG from %s: %s", url, err.Error()))
-		}
 		return 0, fmt.Errorf("failed to decode PNG: %w", err)
 	}
 	// 调整图像大小
@@ -113,9 +101,6 @@ func countActiveIPs(client *req.Client, url string) (int, error) {
 				count++
 			}
 		}
-	}
-	if model.EnableLoger {
-		Logger.Info(fmt.Sprintf("Active IP count from PNG: %d", count))
 	}
 	return count, nil
 }

@@ -73,7 +73,7 @@ func processPrintIPInfo(ipVersion string, ipResult *model.IpInfo) string {
 	}
 	// 仅处理 IPv4 的邻居信息
 	if ipVersion == "ipv4" && ipResult.Ip != "" {
-		prefixNum := baseinfo.GetCIDRPrefix(ipResult.Ip) 
+		prefixNum := baseinfo.GetCIDRPrefix(ipResult.Ip)
 		neighborActive, neighborTotal, err := baseinfo.GetNeighborCount(ipResult.Ip, prefixNum)
 		if err == nil {
 			info += fmt.Sprintf(" IPV4 Active IPs     : %d/%d (CIDR /%d)\n", neighborActive, neighborTotal, prefixNum)

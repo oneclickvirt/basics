@@ -89,8 +89,8 @@ func parseCIDRFromHE(jsonData string) string {
 	if !ok {
 		return ""
 	}
-	re := regexp.MustCompile(`CIDR:\s+([0-9./]+)`)
-	matches := re.FindStringSubmatch(data)
+	re := regexp.MustCompile(`cidr:\s+([0-9./]+)`)
+	matches := re.FindStringSubmatch(strings.ToLower(data))
 	if len(matches) > 1 {
 		return matches[1]
 	}
@@ -99,10 +99,20 @@ func parseCIDRFromHE(jsonData string) string {
 
 // parseCIDRFromBGPTools 解析 BGP Tools HTML，提取 CIDR
 func parseCIDRFromBGPTools(data string) string {
-	re := regexp.MustCompile(`(?m)<td class="smallonmobile nowrap"><a href="/prefix/([0-9./]+)">`) // 提取 <a href="/prefix/54.92.128.0/17">
-	matches := re.FindStringSubmatch(data)
-	if len(matches) > 1 {
-		return matches[1]
+	patterns := []string{
+		// 原始模式
+		`(?m)<td class="smallonmobile nowrap"><a href="/prefix/([0-9./]+)">`,
+		// 网络头部模式
+		`<p id="network-name" class="heading-xlarge">([0-9./]+)</p>`,
+		// 表格模式
+		`<td class="smallonmobile nowrap"><a href="/prefix/([0-9./]+)">`,
+	}
+	for _, pattern := range patterns {
+		re := regexp.MustCompile(pattern)
+		matches := re.FindStringSubmatch(data)
+		if len(matches) > 1 {
+			return matches[1]
+		}
 	}
 	return ""
 }

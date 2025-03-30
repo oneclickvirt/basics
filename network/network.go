@@ -91,7 +91,9 @@ func processPrintIPInfo(ipVersion string, ipResult *model.IpInfo) string {
 				}
 			}
 			if err2 == nil {
-				info += fmt.Sprintf(" %d/%d (prefix /%d)", prefixActive, prefixTotal, cidrPrefix)
+				if cidrPrefix != 24 {
+					info += fmt.Sprintf(" %d/%d (prefix /%d)", prefixActive, prefixTotal, cidrPrefix)
+				}
 			} else {
 				if model.EnableLoger {
 					Logger.Info(fmt.Sprintf("prefix data unavailable: %s", err2.Error()))

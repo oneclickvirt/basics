@@ -12,6 +12,5 @@ func TestNeighborCount(t *testing.T) {
 		fmt.Println("Error:", err)
 		return
 	}
-	
 	fmt.Printf("Neighbor Active: %d/%d\n", neighborActive, neighborTotal)
 }

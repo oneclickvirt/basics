@@ -33,8 +33,10 @@ func GetCIDRPrefix(ip string) (string, int) {
 	if err == nil && cidrPrefix > 0 {
 		return cidrIp, cidrPrefix
 	}
-	if model.EnableLoger {
-		Logger.Info("Can not find ipv4 BGP CIDR")
+	if model.EnableLoger && err != nil {
+		Logger.Info(fmt.Sprintf("Can not find ipv4 BGP CIDR: %s", err.Error()))
+	} else if model.EnableLoger {
+		Logger.Info("Can not find ipv4 BGP CIDR: cidrPrefix <= 0")
 	}
 	return "", -1
 }

@@ -60,9 +60,9 @@ Usage: basics [options]
   -v      Show version
 ```
 
-![1743249785020](https://github.com/user-attachments/assets/061e9dbe-7382-46b6-bc16-57e0b0df2ee5)
+![图片](https://github.com/user-attachments/assets/42b470c8-0a40-474e-98e5-6fe99009b593)
 
-![1743249724033](https://github.com/user-attachments/assets/99e9741d-cbc2-40b2-aacc-2afdaeb6652a)
+![图片](https://github.com/user-attachments/assets/414f47b3-1708-4a9a-96a7-4e21b30a7b4e)
 
 ## 卸载
 

@@ -20,8 +20,8 @@ import (
 	. "github.com/oneclickvirt/defaultset"
 )
 
-// GetCIDRPrefix 获取 IP 地址的实际 CIDR 前缀
-func GetCIDRPrefix(ip string) int {
+// GetCIDRPrefix
+func GetCIDRPrefix(ip string) (string, int) {
 	if model.EnableLoger {
 		InitLogger()
 		defer Logger.Sync()
@@ -29,42 +29,18 @@ func GetCIDRPrefix(ip string) int {
 	client := req.C()
 	client.ImpersonateChrome()
 	client.SetTimeout(6 * time.Second)
-	cidrPrefix, err := fetchCIDRFromBGPToolsAndHe(client, ip)
-	if err == nil && cidrPrefix > 0 && cidrPrefix >= 24 {
-		return cidrPrefix
-	}
-	interfaces, err := net.Interfaces()
-	if err != nil {
-		if model.EnableLoger {
-			Logger.Info(fmt.Sprintf("Error getting interfaces: %s", err.Error()))
-		}
-		return 24
-	}
-	for _, iface := range interfaces {
-		addrs, err := iface.Addrs()
-		if err != nil {
-			if model.EnableLoger {
-				Logger.Info(fmt.Sprintf("Error getting addresses for interface %s: %s", iface.Name, err.Error()))
-			}
-			continue
-		}
-		for _, addr := range addrs {
-			if ipNet, ok := addr.(*net.IPNet); ok && ipNet.IP.To4() != nil {
-				if ipNet.IP.String() == ip {
-					ones, _ := ipNet.Mask.Size()
-					return ones
-				}
-			}
-		}
+	cidrIp, cidrPrefix, err := fetchCIDRFromBGPToolsAndHe(client, ip)
+	if err == nil && cidrPrefix > 0 {
+		return cidrIp, cidrPrefix
 	}
 	if model.EnableLoger {
-		Logger.Info("Can not find ipv4 CIDR, using default /24")
+		Logger.Info("Can not find ipv4 BGP CIDR")
 	}
-	return 24
+	return "", -1
 }
 
 // fetchCIDRFromBGPToolsAndHe 通过 BGP Tools 和 HE 查询 CIDR 前缀
-func fetchCIDRFromBGPToolsAndHe(client *req.Client, ip string) (int, error) {
+func fetchCIDRFromBGPToolsAndHe(client *req.Client, ip string) (string, int, error) {
 	// 先尝试从 HE 获取 CIDR
 	heURL := fmt.Sprintf("https://bgp.he.net/whois/ip/%s", ip)
 	heResp, err := client.R().Get(heURL)
@@ -74,7 +50,7 @@ func fetchCIDRFromBGPToolsAndHe(client *req.Client, ip string) (int, error) {
 			cidrs := strings.Split(cidr, "/")
 			if len(cidrs) == 2 {
 				cidrNum, _ := strconv.Atoi(cidrs[1])
-				return cidrNum, nil
+				return cidrs[0], cidrNum, nil
 			}
 		}
 	}
@@ -82,22 +58,22 @@ func fetchCIDRFromBGPToolsAndHe(client *req.Client, ip string) (int, error) {
 	bgpURL := fmt.Sprintf("https://bgp.tools/prefix/%s", ip)
 	bgpResp, err := client.R().Get(bgpURL)
 	if err != nil {
-		return -1, err
+		return "", -1, err
 	}
 	if !bgpResp.IsSuccessState() {
-		return -1, fmt.Errorf("BGP Tools HTTP request failed: %s", bgpResp.Status)
+		return "", -1, fmt.Errorf("BGP Tools HTTP request failed: %s", bgpResp.Status)
 	}
 	cidr := parseCIDRFromBGPTools(bgpResp.String())
 	if cidr == "" {
-		return -1, fmt.Errorf("failed to extract CIDR from BGP Tools")
+		return "", -1, fmt.Errorf("failed to extract CIDR from BGP Tools")
 	}
 	cidrs := strings.Split(cidr, "/")
 	if len(cidrs) != 2 {
-		return -1, fmt.Errorf("failed to extract CIDR from BGP Tools")
+		return "", -1, fmt.Errorf("failed to extract CIDR from BGP Tools")
 	}
 	// fmt.Println("bgp", cidr)
 	cidrNum, _ := strconv.Atoi(cidrs[1])
-	return cidrNum, nil
+	return cidrs[0], cidrNum, nil
 }
 
 // parseCIDRFromHE 解析 HE 的 whois 数据，提取 CIDR
@@ -129,7 +105,20 @@ func parseCIDRFromBGPTools(data string) string {
 	return ""
 }
 
-func GetNeighborCount(ip string, prefixNum int) (int, int, error) {
+func MaskIP(ipStr string) string {
+	ip := net.ParseIP(ipStr)
+	if ip == nil {
+		return ""
+	}
+	parts := strings.Split(ipStr, ".")
+	if len(parts) == 4 {
+		parts[3] = "0"
+		return strings.Join(parts, ".")
+	}
+	return ""
+}
+
+func GetActiveIpsCount(ip string, prefixNum int) (int, int, error) {
 	if ip == "" {
 		return 0, 0, fmt.Errorf("IP address cannot be empty")
 	}
@@ -139,12 +128,12 @@ func GetNeighborCount(ip string, prefixNum int) (int, int, error) {
 	client := req.C()
 	client.ImpersonateChrome()
 	cidrBase := fmt.Sprintf("%s/%d", ip, prefixNum)
-	neighborTotal := int(math.Pow(2, float64(32-prefixNum)))
-	neighborActive, err := countActiveIPs(client, fmt.Sprintf("https://bgp.tools/pfximg/%s", cidrBase))
+	total := int(math.Pow(2, float64(32-prefixNum)))
+	active, err := countActiveIPs(client, fmt.Sprintf("https://bgp.tools/pfximg/%s", cidrBase))
 	if err != nil {
 		return 0, 0, err
 	}
-	return neighborActive, neighborTotal, nil
+	return active, total, nil
 }
 
 func countActiveIPs(client *req.Client, url string) (int, error) {

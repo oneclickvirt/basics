@@ -6,8 +6,8 @@ import (
 )
 
 func TestNeighborCount(t *testing.T) {
-	ip := "54.92.128.1" // 示例 IP
-	neighborActive, neighborTotal, err := GetNeighborCount(ip, GetCIDRPrefix(ip))
+	ip := "54.92.128.123" // 示例 IP
+	neighborActive, neighborTotal, err := GetActiveIpsCount(MaskIP(ip), 24)
 	if err != nil {
 		fmt.Println("Error:", err)
 		return

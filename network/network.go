@@ -71,12 +71,33 @@ func processPrintIPInfo(ipVersion string, ipResult *model.IpInfo) string {
 		}
 		info += "\n"
 	}
-	// 仅处理 IPv4 的邻居信息
-	if ipVersion == "ipv4" && ipResult.Ip != "" {
-		prefixNum := baseinfo.GetCIDRPrefix(ipResult.Ip)
-		neighborActive, neighborTotal, err := baseinfo.GetNeighborCount(ipResult.Ip, prefixNum)
-		if err == nil {
-			info += fmt.Sprintf(" IPV4 Active IPs     : %d/%d (CIDR /%d)\n", neighborActive, neighborTotal, prefixNum)
+	// 仅处理 IPv4 的活跃IP信息
+	if ipVersion == "ipv4" && ipResult.Ip != "" && baseinfo.MaskIP(ipResult.Ip) != "" {
+		if model.EnableLoger {
+			InitLogger()
+			defer Logger.Sync()
+		}
+		subnetCidrIp := baseinfo.MaskIP(ipResult.Ip)
+		subnetActive, subnetTotal, err1 := baseinfo.GetActiveIpsCount(subnetCidrIp, 24)
+		cidrIp, cidrPrefix := baseinfo.GetCIDRPrefix(ipResult.Ip)
+		prefixActive, prefixTotal, err2 := baseinfo.GetActiveIpsCount(cidrIp, cidrPrefix)
+		if (err1 == nil && subnetActive > 0 && subnetTotal > 0) || (err2 == nil && prefixActive > 0 && prefixTotal > 0) {
+			info += " IPV4 Active IPs     :"
+			if err1 == nil {
+				info += fmt.Sprintf(" %d/%d (subnet /24)", subnetActive, subnetTotal)
+			} else {
+				if model.EnableLoger {
+					Logger.Info(fmt.Sprintf("subnet /24 data unavailable: %s", err1.Error()))
+				}
+			}
+			if err2 == nil {
+				info += fmt.Sprintf(" %d/%d (prefix /%d)", prefixActive, prefixTotal, cidrPrefix)
+			} else {
+				if model.EnableLoger {
+					Logger.Info(fmt.Sprintf("prefix data unavailable: %s", err2.Error()))
+				}
+			}
+			info += "\n"
 		}
 	}
 	return info

@@ -43,7 +43,6 @@ func updateGPUStat(gpuStat *uint64, wg *sync.WaitGroup) {
 		return
 	}
 	defer atomic.StoreInt32(&updateGPUStatus, 0)
-
 	for statDataFetchAttempts["GPU"] < maxDeviceDataFetchAttempts {
 		gs, err := gpustat.GetGPUStat()
 		if err != nil {
@@ -74,7 +73,9 @@ func getGPUInfo(ret *model.SystemInfo) (*model.SystemInfo, error) {
 		wg.Add(1)
 		go updateGPUStat(&gpuStat, &wg)
 		wg.Wait() // 等待 updateGPUStat 完成
-		ret.GpuStats = fmt.Sprintf("%f", math.Float64frombits(gpuStat))
+		if math.Float64frombits(gpuStat) > 0 {
+			ret.GpuStats = fmt.Sprintf("%f", math.Float64frombits(gpuStat))
+		}
 		return ret, nil
 	} else {
 		hostDataFetchAttempts["GPU"]++

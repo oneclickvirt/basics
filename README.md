@@ -18,7 +18,8 @@ Include: https://github.com/oneclickvirt/gostun
 
 ## TODO
 
-- [ ] 适配MACOS系统的识别
+- [ ] 支持raid识别
+- [ ] 适配MACOS系统的相关信息识别
 
 ## Usage
 

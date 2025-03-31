@@ -1,3 +1,6 @@
+//go:build linux
+// +build linux
+
 package ipv6
 
 import (
@@ -13,60 +16,12 @@ import (
 	"time"
 )
 
-// 获取第一个以 eth 或 en 开头的网络接口
-func getInterface() (string, error) {
-	cmd := exec.Command("sh", "-c", "ls /sys/class/net/ | grep -E '^(eth|en)' | head -n 1")
-	output, err := cmd.Output()
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(string(output)), nil
-}
-
-// 获取当前的公网 IPv6 地址
-func getCurrentIPv6() (string, error) {
-	cmd := exec.Command("curl", "-s", "-6", "-m", "5", "ipv6.ip.sb")
-	output, err := cmd.Output()
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(string(output)), nil
-}
-
 // Router Advertisement前缀选项类型
 const (
 	ICMPv6RouterAdvertisement = 134
+	ICMPv6RouterSolicitation  = 133
 	ICMPv6OptionPrefix        = 3
 )
-
-// ICMPv6报文头部结构
-type ICMPv6Header struct {
-	Type     uint8
-	Code     uint8
-	Checksum uint16
-}
-
-// Router Advertisement报文结构
-type RouterAdvertisement struct {
-	CurHopLimit    uint8
-	Flags          uint8
-	RouterLifetime uint16
-	ReachableTime  uint32
-	RetransTimer   uint32
-	Options        []byte
-}
-
-// 前缀信息选项结构
-type PrefixInfoOption struct {
-	Type              uint8
-	Length            uint8
-	PrefixLength      uint8
-	Flags             uint8
-	ValidLifetime     uint32
-	PreferredLifetime uint32
-	Reserved          uint32
-	Prefix            [16]byte
-}
 
 // 从RA报文中提取前缀长度信息
 func extractPrefixFromRAOption(data []byte) []string {
@@ -105,25 +60,41 @@ func extractPrefixFromRAOption(data []byte) []string {
 	return prefixLengths
 }
 
-// 判断是否为非全局单播地址前缀
-func isNonGlobalPrefix(prefix [16]byte) bool {
-	// 链路本地地址 fe80::/10
-	if prefix[0] == 0xfe && (prefix[1]&0xc0) == 0x80 {
-		return true
+// 发送Router Solicitation消息
+func sendRouterSolicitation(fd int, interfaceName string) error {
+	// 获取接口信息
+	intf, err := net.InterfaceByName(interfaceName)
+	if err != nil {
+		return fmt.Errorf("获取接口信息失败: %v", err)
 	}
-	// 唯一本地地址 fc00::/7
-	if (prefix[0] & 0xfe) == 0xfc {
-		return true
+	// 构造ICMPv6 Router Solicitation消息
+	// ICMPv6头部(4字节): 类型(1字节) + 代码(1字节) + 校验和(2字节)
+	msg := make([]byte, 8)
+	msg[0] = ICMPv6RouterSolicitation // 类型:Router Solicitation
+	msg[1] = 0                        // 代码:0
+	// msg[2]和msg[3]是校验和字段，暂时为0，稍后计算
+	// 可选：添加Source Link-Layer Address选项（MAC地址）
+	// 这对一些路由器来说可能是必要的
+	if len(intf.HardwareAddr) == 6 { // 确保MAC地址有效
+		// 添加源链路层地址选项
+		// 选项类型(1) + 长度(1) + MAC地址(6)
+		msg = append(msg, 1)                    // 选项类型:1 (Source Link-Layer Address)
+		msg = append(msg, 1)                    // 长度:1 (以8字节为单位，这里是8字节)
+		msg = append(msg, intf.HardwareAddr...) // MAC地址
+		msg = append(msg, 0, 0)                 // 填充到8字节对齐
 	}
-	// 回环地址 ::1
-	if prefix[0] == 0 && prefix[1] == 0 && prefix[15] == 1 {
-		return true
+	// 设置ICMPv6的目标地址为All Routers组播地址
+	var allRoutersAddr [16]byte
+	copy(allRoutersAddr[:], net.ParseIP("ff02::2").To16())
+	// 构造sockaddr_in6结构
+	var addr syscall.SockaddrInet6
+	addr.ZoneId = uint32(intf.Index)
+	copy(addr.Addr[:], allRoutersAddr[:])
+	// 发送数据包
+	if err := syscall.Sendto(fd, msg, 0, &addr); err != nil {
+		return fmt.Errorf("发送Router Solicitation失败: %v", err)
 	}
-	// 组播地址 ff00::/8
-	if prefix[0] == 0xff {
-		return true
-	}
-	return false
+	return nil
 }
 
 // 方法1：尝试原生实现从Router Advertisement获取前缀长度
@@ -181,10 +152,10 @@ func getPrefixFromRA(interfaceName string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	// 发送Router Solicitation
-	go func() {
-		// 实际应用中可能需要构造并发送Router Solicitation消息
-		// 这里为简化代码，仅依赖网络上周期性的Router Advertisement
-	}()
+	err = sendRouterSolicitation(fd, interfaceName)
+	if err != nil {
+		return "", fmt.Errorf("发送Router Solicitation失败: %v", err)
+	}
 	// 接收Router Advertisement
 	buffer := make([]byte, 1500)
 	for {
@@ -252,7 +223,7 @@ func getPrefixFromIPCommand(interfaceName string) (string, error) {
 	return "", fmt.Errorf("未找到有效的IPv6前缀长度")
 }
 
-// 方法3：从配置文件获取前缀长度
+// Linux平台专用的配置文件获取方法
 func getPrefixFromConfigFiles() (string, error) {
 	// 尝试从常见的网络配置文件中读取
 	configFiles := []string{
@@ -278,8 +249,7 @@ func getPrefixFromConfigFiles() (string, error) {
 	return "", fmt.Errorf("在配置文件中未找到IPv6前缀长度信息")
 }
 
-// 获取 IPv6 子网掩码
-// 获取 IPv6 子网掩码
+// 获取 IPv6 子网掩码 - Linux 实现
 func GetIPv6Mask(language string) (string, error) {
 	// 首先检查是否有公网IPv6地址
 	publicIPv6, err := getCurrentIPv6()
@@ -295,30 +265,18 @@ func GetIPv6Mask(language string) (string, error) {
 	// 优先级1：尝试从RA报文获取前缀长度
 	prefixLen, err := getPrefixFromRA(interfaceName)
 	if err == nil && prefixLen != "" {
-		if language == "en" {
-			return fmt.Sprintf(" IPv6 Mask           : /%s", prefixLen), nil
-		}
-		return fmt.Sprintf(" IPv6 子网掩码       : /%s", prefixLen), nil
+		return formatIPv6Mask(prefixLen, language), nil
 	}
 	// 优先级2：从ip命令获取前缀长度
 	prefixLen, err = getPrefixFromIPCommand(interfaceName)
 	if err == nil && prefixLen != "" {
-		if language == "en" {
-			return fmt.Sprintf(" IPv6 Mask           : /%s", prefixLen), nil
-		}
-		return fmt.Sprintf(" IPv6 子网掩码       : /%s", prefixLen), nil
+		return formatIPv6Mask(prefixLen, language), nil
 	}
 	// 优先级3：从配置文件获取前缀长度
 	prefixLen, err = getPrefixFromConfigFiles()
 	if err == nil && prefixLen != "" {
-		if language == "en" {
-			return fmt.Sprintf(" IPv6 Mask           : /%s", prefixLen), nil
-		}
-		return fmt.Sprintf(" IPv6 子网掩码       : /%s", prefixLen), nil
+		return formatIPv6Mask(prefixLen, language), nil
 	}
 	// 如果以上方法都失败但确实有公网IPv6，使用/128作为默认子网掩码
-	if language == "en" {
-		return " IPv6 Mask           : /128", nil
-	}
-	return " IPv6 子网掩码       : /128", nil
+	return formatIPv6Mask("128", language), nil
 }

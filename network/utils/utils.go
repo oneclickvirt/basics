@@ -24,7 +24,6 @@ func FetchJsonFromURL(url, netType string, enableHeader bool, additionalHeader s
 	if netType != "tcp4" && netType != "tcp6" {
 		return nil, fmt.Errorf("Invalid netType: %s. Expected 'tcp4' or 'tcp6'.", netType)
 	}
-
 	// 创建 HTTP 客户端
 	client := req.C()
 	client.SetTimeout(7 * time.Second).

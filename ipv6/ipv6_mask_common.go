@@ -84,7 +84,7 @@ func isNonGlobalPrefix(prefix [16]byte) bool {
 // 格式化返回IPv6子网掩码
 func formatIPv6Mask(prefixLen string, language string) string {
 	if language == "en" {
-		return fmt.Sprintf(" IPv6 Mask           : /%s", prefixLen)
+		return fmt.Sprintf(" IPv6 Mask           : /%s\n", prefixLen)
 	}
-	return fmt.Sprintf(" IPv6 子网掩码       : /%s", prefixLen)
+	return fmt.Sprintf(" IPv6 子网掩码       : /%s\n", prefixLen)
 }

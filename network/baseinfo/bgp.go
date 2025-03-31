@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/imroc/req/v3"
-	"github.com/nfnt/resize"
 	"github.com/oneclickvirt/basics/model"
 	. "github.com/oneclickvirt/defaultset"
 )
@@ -141,14 +140,14 @@ func GetActiveIpsCount(ip string, prefixNum int) (int, int, error) {
 	client.ImpersonateChrome()
 	cidrBase := fmt.Sprintf("%s/%d", ip, prefixNum)
 	total := int(math.Pow(2, float64(32-prefixNum)))
-	active, err := countActiveIPs(client, fmt.Sprintf("https://bgp.tools/pfximg/%s", cidrBase))
+	active, err := countActiveIPs(client, fmt.Sprintf("https://bgp.tools/pfximg/%s", cidrBase), total)
 	if err != nil {
 		return 0, 0, err
 	}
 	return active, total, nil
 }
 
-func countActiveIPs(client *req.Client, url string) (int, error) {
+func countActiveIPs(client *req.Client, url string, total int) (int, error) {
 	resp, err := client.R().Get(url)
 	if err != nil {
 		return 0, err
@@ -170,16 +169,17 @@ func countActiveIPs(client *req.Client, url string) (int, error) {
 	if err != nil {
 		return 0, fmt.Errorf("failed to decode PNG: %w", err)
 	}
-	// 调整图像大小
-	resizedImg := resize.Resize(0, 100, img, resize.Lanczos3)
+	totalPixels := img.Bounds().Dx() * img.Bounds().Dy()
 	count := 0
-	for y := 0; y < resizedImg.Bounds().Dy(); y++ {
-		for x := 0; x < resizedImg.Bounds().Dx(); x++ {
-			c := color.RGBAModel.Convert(resizedImg.At(x, y)).(color.RGBA)
-			if c.R == 0 && c.G == 3 && c.B == 255 {
+	for y := 0; y < img.Bounds().Dy(); y++ {
+		for x := 0; x < img.Bounds().Dx(); x++ {
+			c := color.RGBAModel.Convert(img.At(x, y)).(color.RGBA)
+			if c.R == 0 && c.G >= 2 && c.G <= 4 && c.B == 255 {
 				count++
 			}
 		}
 	}
-	return count, nil
+	// 计算比例并调整活跃 IP 估算值
+	adjustedActive := int(float64(count) / float64(totalPixels) * float64(total))
+	return adjustedActive, nil
 }

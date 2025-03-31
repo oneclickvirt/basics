@@ -59,9 +59,9 @@ Usage: basics [options]
   -v      Show version
 ```
 
-![图片](https://github.com/user-attachments/assets/42b470c8-0a40-474e-98e5-6fe99009b593)
+![图片](https://github.com/user-attachments/assets/8c241b8a-4403-49a7-a17a-dbddf8783033)
 
-![图片](https://github.com/user-attachments/assets/414f47b3-1708-4a9a-96a7-4e21b30a7b4e)
+![图片](https://github.com/user-attachments/assets/624d2aaa-ba1c-4bec-a6db-9701c0196c6f)
 
 ## 卸载
 

@@ -60,10 +60,6 @@ Usage: basics [options]
   -v      Show version
 ```
 
-![图片](https://github.com/user-attachments/assets/8c241b8a-4403-49a7-a17a-dbddf8783033)
-
-![图片](https://github.com/user-attachments/assets/624d2aaa-ba1c-4bec-a6db-9701c0196c6f)
-
 ## 卸载
 
 ```
@@ -76,3 +72,9 @@ rm -rf /usr/bin/basics
 ```
 go get github.com/oneclickvirt/basics@latest
 ```
+
+## 结果展示
+
+![图片](https://github.com/user-attachments/assets/8c241b8a-4403-49a7-a17a-dbddf8783033)
+
+![图片](https://github.com/user-attachments/assets/624d2aaa-ba1c-4bec-a6db-9701c0196c6f)

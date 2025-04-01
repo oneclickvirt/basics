@@ -92,32 +92,25 @@ func getPrefixFromNetworksetup(interfaceName string) (string, error) {
 }
 
 // 获取 IPv6 子网掩码 - macOS 实现
-func GetIPv6Mask(language string) (string, error) {
-	// 首先检查是否有公网IPv6地址
-	publicIPv6, err := getCurrentIPv6()
-	if err != nil || publicIPv6 == "" {
-		// 没有公网IPv6，返回空字符串
-		return "", nil
+func GetIPv6Mask(publicIPv6, language string) (string, error) {
+	if publicIPv6 == "" {
+		return "", fmt.Errorf("无公网IPV6地址")
 	}
-
 	// 获取网络接口
 	interfaceName, err := getInterface()
 	if err != nil || interfaceName == "" {
 		return "", fmt.Errorf("获取网络接口失败: %v", err)
 	}
-
 	// 方法1：从ifconfig获取前缀长度
 	prefixLen, err := getPrefixFromIfconfig(interfaceName)
 	if err == nil && prefixLen != "" {
 		return formatIPv6Mask(prefixLen, language), nil
 	}
-
 	// 方法2：从networksetup获取前缀长度
 	prefixLen, err = getPrefixFromNetworksetup(interfaceName)
 	if err == nil && prefixLen != "" {
 		return formatIPv6Mask(prefixLen, language), nil
 	}
-
 	// 如果以上方法都失败但确实有公网IPv6，使用/128作为默认子网掩码
 	return formatIPv6Mask("128", language), nil
 }

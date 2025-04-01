@@ -5,6 +5,7 @@ import (
 
 	"github.com/oneclickvirt/basics/model"
 	"github.com/oneclickvirt/basics/network/baseinfo"
+	"github.com/oneclickvirt/basics/network/ipv6"
 	. "github.com/oneclickvirt/defaultset"
 )
 
@@ -36,7 +37,7 @@ import (
 // }
 
 // processPrintIPInfo 处理IP信息
-func processPrintIPInfo(ipVersion string, ipResult *model.IpInfo) string {
+func processPrintIPInfo(ipVersion, language string, ipResult *model.IpInfo) string {
 	var info string
 	var headASNString, headLocationString string
 	if ipVersion == "ipv4" {
@@ -71,7 +72,7 @@ func processPrintIPInfo(ipVersion string, ipResult *model.IpInfo) string {
 		}
 		info += "\n"
 	}
-	// 仅处理 IPv4 的活跃IP信息
+	// 处理 IPv4 的活跃IP信息
 	if ipVersion == "ipv4" && ipResult.Ip != "" && baseinfo.MaskIP(ipResult.Ip) != "" {
 		if model.EnableLoger {
 			InitLogger()
@@ -102,6 +103,13 @@ func processPrintIPInfo(ipVersion string, ipResult *model.IpInfo) string {
 			info += "\n"
 		}
 	}
+	// 处理 Ipv6 的Mask信息
+	if ipVersion == "ipv6" && ipResult.Ip != "" {
+		maskInfoV6, err := ipv6.GetIPv6Mask(ipResult.Ip, language)
+		if err == nil {
+			info += maskInfoV6
+		}
+	}
 	return info
 }
 
@@ -120,10 +128,10 @@ func NetworkCheck(checkType string, enableSecurityCheck bool, language string) (
 			Logger.Info(err.Error())
 		}
 		if ipInfoV4Result != nil {
-			ipInfo += processPrintIPInfo("ipv4", ipInfoV4Result)
+			ipInfo += processPrintIPInfo("ipv4", language, ipInfoV4Result)
 		}
 		if ipInfoV6Result != nil {
-			ipInfo += processPrintIPInfo("ipv6", ipInfoV6Result)
+			ipInfo += processPrintIPInfo("ipv6", language, ipInfoV6Result)
 		}
 		return ipInfo, "", nil
 	} else if checkType == "ipv4" {
@@ -132,7 +140,7 @@ func NetworkCheck(checkType string, enableSecurityCheck bool, language string) (
 			Logger.Info(err.Error())
 		}
 		if ipInfoV4Result != nil {
-			ipInfo += processPrintIPInfo("ipv4", ipInfoV4Result)
+			ipInfo += processPrintIPInfo("ipv4", language, ipInfoV4Result)
 		}
 		return ipInfo, "", nil
 	} else if checkType == "ipv6" {
@@ -141,7 +149,7 @@ func NetworkCheck(checkType string, enableSecurityCheck bool, language string) (
 			Logger.Info(err.Error())
 		}
 		if ipInfoV6Result != nil {
-			ipInfo += processPrintIPInfo("ipv6", ipInfoV6Result)
+			ipInfo += processPrintIPInfo("ipv6", language, ipInfoV6Result)
 		}
 		return ipInfo, "", nil
 	}

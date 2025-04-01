@@ -65,12 +65,9 @@ func getPrefixFromConfigFiles() (string, error) {
 }
 
 // 获取 IPv6 子网掩码 - FreeBSD 实现
-func GetIPv6Mask(language string) (string, error) {
-	// 首先检查是否有公网IPv6地址
-	publicIPv6, err := getCurrentIPv6()
-	if err != nil || publicIPv6 == "" {
-		// 没有公网IPv6，返回空字符串
-		return "", nil
+func GetIPv6Mask(publicIPv6, language string) (string, error) {
+	if publicIPv6 == "" {
+		return "", fmt.Errorf("无公网IPV6地址")
 	}
 	// 获取网络接口
 	interfaceName, err := getInterface()

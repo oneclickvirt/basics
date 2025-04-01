@@ -88,10 +88,9 @@ func getPrefixFromPowerShell(interfaceName string) (string, error) {
 }
 
 // 获取 IPv6 子网掩码 - Windows 实现
-func GetIPv6Mask(language string) (string, error) {
-	publicIPv6, err := getCurrentIPv6()
-	if err != nil || publicIPv6 == "" {
-		return "", nil
+func GetIPv6Mask(publicIPv6, language string) (string, error) {
+	if publicIPv6 == "" {
+		return "", fmt.Errorf("无公网IPV6地址")
 	}
 	interfaceName, err := getInterface()
 	if err != nil || interfaceName == "" {

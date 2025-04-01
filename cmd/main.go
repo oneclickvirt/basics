@@ -8,7 +8,6 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/oneclickvirt/basics/ipv6"
 	"github.com/oneclickvirt/basics/model"
 	"github.com/oneclickvirt/basics/network"
 	"github.com/oneclickvirt/basics/system"
@@ -41,14 +40,9 @@ func main() {
 	}()
 	fmt.Println("项目地址:", "https://github.com/oneclickvirt/basics")
 	ipInfo, _, _ := network.NetworkCheck("both", false, language)
-	ipv6Info, err := ipv6.GetIPv6Mask(language)
 	res := system.CheckSystemInfo(language)
 	fmt.Println("--------------------------------------------------")
-	temp := strings.ReplaceAll(res+ipInfo, "\n\n", "\n")
-	if err == nil && res != "" {
-		temp += ipv6Info
-	}
-	fmt.Printf(temp)
+	fmt.Printf(strings.ReplaceAll(res+ipInfo, "\n\n", "\n"))
 	fmt.Println("--------------------------------------------------")
 	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
 		fmt.Println("Press Enter to exit...")

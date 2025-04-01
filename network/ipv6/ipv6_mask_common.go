@@ -27,36 +27,6 @@ func getInterface() (string, error) {
 	return "", fmt.Errorf("未找到合适的网络接口")
 }
 
-// 获取当前的公网 IPv6 地址
-// func getCurrentIPv6() (string, error) {
-// 	// 创建一个新的req客户端，设置超时
-// 	client := req.C().SetTimeout(5 * time.Second)
-// 	client.SetTimeout(6 * time.Second)
-// 	// 尝试多个 IPv6 检测服务
-// 	urls := []string{
-// 		"https://ipv6.ip.sb",
-// 		"https://api6.ipify.org",
-// 		"https://v6.ident.me",
-// 	}
-// 	var lastErr error
-// 	for _, url := range urls {
-// 		resp, err := client.R().Get(url)
-// 		if err != nil {
-// 			lastErr = err
-// 			continue
-// 		}
-// 		body := resp.String()
-// 		ipv6 := strings.TrimSpace(body)
-// 		if net.ParseIP(ipv6) != nil && strings.Contains(ipv6, ":") {
-// 			return ipv6, nil
-// 		}
-// 	}
-// 	if lastErr != nil {
-// 		return "", lastErr
-// 	}
-// 	return "", fmt.Errorf("无法获取公网IPv6地址")
-// }
-
 // 判断是否为非全局单播地址前缀
 func isNonGlobalPrefix(prefix [16]byte) bool {
 	// 链路本地地址 fe80::/10

@@ -19,7 +19,6 @@ Include: https://github.com/oneclickvirt/gostun
 ## TODO
 
 - [ ] 在可检索的物理核心的时候，额外添加对虚拟核心的识别，尽量全部核心数量还有线程数都展示出来
-- [ ] 支持raid识别
 - [ ] 适配MACOS系统的相关信息识别
 
 ## Usage

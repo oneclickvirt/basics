@@ -7,18 +7,21 @@ jobs:
   test:
     strategy:
       matrix:
-        go: [ '1.22.x' ]
-        os: [ ubuntu-latest ]
+        go: ['1.22.x']
+        os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+
       - name: Setup Go
         uses: actions/setup-go@v2
         with:
           go-version: ${{ matrix.go }}
+
       - name: Test
         run: go test ./... -coverprofile=coverage.txt
+
       - name: Create Tag
         if: success() # 仅在测试成功时运行
         run: |
@@ -27,5 +30,22 @@ jobs:
           TAG="v0.0.11-$(date +'%Y%m%d%H%M%S')"
           git tag $TAG
           git push origin $TAG
+          echo "TAG=$TAG" >> $GITHUB_ENV
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update README.md
+        if: success() # 仅在测试成功后运行
+        run: |
+          sed -i "s|go get github.com/oneclickvirt/basics@.*|go get github.com/oneclickvirt/basics@${TAG}|" README.md
+        env:
+          TAG: ${{ env.TAG }}
+
+      - name: Commit and Push README.md
+        if: success() # 仅在测试成功后运行
+        run: |
+          git add README.md
+          git commit -m "Update README.md with new tag ${TAG}"
+          git push origin main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

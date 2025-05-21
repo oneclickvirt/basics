@@ -17,8 +17,8 @@ import (
 )
 
 func hasFrequency(model string) bool {
-    matched, _ := regexp.MatchString(`@\s*\d+\.?\d*\s*(GHz|MHz)`, model)
-    return matched
+	matched, _ := regexp.MatchString(`@\s*\d+\.?\d*\s*(GHz|MHz)`, model)
+	return matched
 }
 
 func checkCPUFeatureLinux(filename string, feature string) (string, bool) {
@@ -112,10 +112,10 @@ func getCpuInfoFromProcCpuinfo(ret *model.SystemInfo) {
 		}
 	}
 	if modelNameFound && cpuMHz != "" && !hasFrequency(ret.CpuModel) {
-	    ret.CpuModel = strings.Join(strings.Fields(ret.CpuModel+" @"+cpuMHz+" MHz"), " ")
+		ret.CpuModel = strings.Join(strings.Fields(ret.CpuModel+" @ "+cpuMHz+" MHz"), " ")
 	}
 	if modelNameFound && cpuGHz != "" && !hasFrequency(ret.CpuModel) {
-	    ret.CpuModel = strings.Join(strings.Fields(ret.CpuModel+" @"+cpuGHz+" GHz"), " ")
+		ret.CpuModel = strings.Join(strings.Fields(ret.CpuModel+" @ "+cpuGHz+" GHz"), " ")
 	}
 }
 
@@ -137,7 +137,7 @@ func getCpuInfoFromLscpu(ret *model.SystemInfo) {
 		case strings.Contains(fields[0], "Model name") && !strings.Contains(fields[0], "BIOS Model name") && ret.CpuModel == "":
 			ret.CpuModel = strings.Join(strings.Fields(value), " ")
 		case strings.Contains(fields[0], "CPU MHz") && !hasFrequency(ret.CpuModel) && !strings.Contains(ret.CpuModel, "@"):
-    			ret.CpuModel = strings.Join(strings.Fields(ret.CpuModel+" @"+value+" MHz"), " ")
+			ret.CpuModel = strings.Join(strings.Fields(ret.CpuModel+" @ "+value+" MHz"), " ")
 		case strings.Contains(fields[0], "CPU static MHz") && !hasFrequency(ret.CpuModel) && !strings.Contains(ret.CpuModel, "@"):
 			ret.CpuModel += " @ " + value + " static MHz"
 		case strings.Contains(fields[0], "CPU dynamic MHz") && !hasFrequency(ret.CpuModel) && !strings.Contains(ret.CpuModel, "@"):
@@ -257,18 +257,19 @@ func getLinuxCpuInfo(ret *model.SystemInfo) (*model.SystemInfo, error) {
 	ci, err := cpu.Info()
 	if err == nil {
 		for i := 0; i < len(ci); i++ {
-		    newModel := strings.TrimSpace(ci[i].ModelName)
-		    // 如果当前型号没有频率信息，且已有型号包含频率
-		    if !hasFrequency(newModel) && hasFrequency(ret.CpuModel) {
-		        // 保留现有带频率的型号
-		        continue
-		    }
-		    // 如果新型号更完整
-		    if len(newModel) > len(ret.CpuModel) || hasFrequency(newModel) {
-		        ret.CpuModel = strings.Join(strings.Fields(newModel), " ")
-		    }
+			newModel := strings.TrimSpace(ci[i].ModelName)
+			// 如果当前型号没有频率信息，且已有型号包含频率
+			if !hasFrequency(newModel) && hasFrequency(ret.CpuModel) {
+				// 保留现有带频率的型号
+				continue
+			}
+			// 如果新型号更完整
+			if len(newModel) > len(ret.CpuModel) || hasFrequency(newModel) {
+				ret.CpuModel = strings.Join(strings.Fields(newModel), " ")
+			}
 		}
 	}
+	ret.CpuModel = strings.ReplaceAll(ret.CpuModel, "  ", " ")
 	deviceTreeContent, err := os.ReadFile("/proc/device-tree")
 	if err == nil && ret.CpuModel == "" {
 		ret.CpuModel = strings.Join(strings.Fields(string(deviceTreeContent)), " ")
@@ -319,7 +320,7 @@ func updateSysctlCpuInfo(ret *model.SystemInfo, sysctlPath string) {
 			ret.CpuModel = strings.Join(strings.Fields(cname), " ")
 			freq, err := getSysctlValue(sysctlPath, "dev.cpu.0.freq")
 			if err == nil && !strings.Contains(freq, "cannot") {
-				ret.CpuModel += " @" + freq + "MHz"
+				ret.CpuModel += " @ " + freq + "MHz"
 			}
 		}
 	}

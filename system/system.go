@@ -78,15 +78,17 @@ func CheckSystemInfo(language string) string {
 				res += " GPU Stats           : " + ret.GpuStats + "\n"
 			}
 		}
-		if runtime.GOOS != "windows" && runtime.GOOS != "macos" {
+		if runtime.GOOS != "windows" && runtime.GOOS != "darwin" {
 			res += " AES-NI              : " + ret.CpuAesNi + "\n"
 		}
-		res += " VM-x/AMD-V/Hyper-V  : " + ret.CpuVAH + "\n"
+		if runtime.GOOS != "darwin" {
+			res += " VM-x/AMD-V/Hyper-V  : " + ret.CpuVAH + "\n"
+		}
 		res += " RAM                 : " + ret.MemoryUsage + " / " + ret.MemoryTotal + "\n"
-		if ret.VirtioBalloon != "" {
+		if ret.VirtioBalloon != "" && runtime.GOOS != "darwin" && runtime.GOOS != "windows" {
 			res += " Virtio Balloon      : " + ret.VirtioBalloon + "\n"
 		}
-		if ret.KSM != "" {
+		if ret.KSM != "" && runtime.GOOS != "darwin" && runtime.GOOS != "windows" {
 			res += " KSM                 : " + ret.KSM + "\n"
 		}
 		if ret.SwapTotal == "" && ret.SwapUsage == "" {
@@ -128,15 +130,17 @@ func CheckSystemInfo(language string) string {
 				res += " GPU 状态            : " + ret.GpuStats + "\n"
 			}
 		}
-		if runtime.GOOS != "windows" && runtime.GOOS != "macos" {
+		if runtime.GOOS != "windows" && runtime.GOOS != "darwin" {
 			res += " AES-NI              : " + ret.CpuAesNi + "\n"
 		}
-		res += " VM-x/AMD-V/Hyper-V  : " + ret.CpuVAH + "\n"
+		if runtime.GOOS != "darwin" {
+			res += " VM-x/AMD-V/Hyper-V  : " + ret.CpuVAH + "\n"
+		}
 		res += " 内存                : " + ret.MemoryUsage + " / " + ret.MemoryTotal + "\n"
-		if ret.VirtioBalloon != "" {
+		if ret.VirtioBalloon != "" && runtime.GOOS != "darwin" && runtime.GOOS != "windows" {
 			res += " 气球驱动            : " + ret.VirtioBalloon + "\n"
 		}
-		if ret.KSM != "" {
+		if ret.KSM != "" && runtime.GOOS != "darwin" && runtime.GOOS != "windows" {
 			res += " 内核页合并          : " + ret.KSM + "\n"
 		}
 		if ret.SwapTotal == "" && ret.SwapUsage == "" {

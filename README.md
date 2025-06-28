@@ -15,10 +15,7 @@ Include: https://github.com/oneclickvirt/gostun
 - [x] 适配```MacOS```与```Windows```系统的信息查询
 - [x] 部分Windows10系统下打勾打叉编码错误显示，已判断是Win时使用Y/N显示而不是勾叉
 - [x] 检测GPU相关信息，参考[ghw](https://github.com/jaypipes/ghw)
-
-## TODO
-
-- [ ] 适配MACOS系统的相关信息识别
+- [x] 适配MACOS系统的相关信息识别
 
 ## Usage
 

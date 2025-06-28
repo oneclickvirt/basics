@@ -12,7 +12,27 @@ import (
 // getDiskInfo 获取硬盘信息
 func getDiskInfo() (string, string, string, string, error) {
 	var diskTotalStr, diskUsageStr, percentageStr, bootPath string
-
+	// macOS 特殊适配
+	if runtime.GOOS == "darwin" {
+		cmd := exec.Command("df", "-h", "/")
+		output, err := cmd.Output()
+		if err == nil {
+			lines := strings.Split(string(output), "\n")
+			if len(lines) >= 2 {
+				fields := strings.Fields(lines[1])
+				if len(fields) >= 5 {
+					bootPath = fields[0]
+					diskTotalStr = fields[1]
+					diskUsageStr = fields[2]
+					percentageStr = fields[4]
+					if strings.Contains(percentageStr, "%") {
+						percentageStr = strings.ReplaceAll(percentageStr, "%", "%%")
+					}
+					return diskTotalStr, diskUsageStr, percentageStr, bootPath, nil
+				}
+			}
+		}
+	}
 	// BSD系统特殊处理
 	if runtime.GOOS == "freebsd" || runtime.GOOS == "openbsd" || runtime.GOOS == "netbsd" {
 		cmd := exec.Command("df", "-h", "/")
@@ -26,24 +46,17 @@ func getDiskInfo() (string, string, string, string, error) {
 					diskTotalStr = fields[1]
 					diskUsageStr = fields[2]
 					percentageStr = fields[4]
-
-					// 两个%避免被转义
 					if percentageStr != "" && strings.Contains(percentageStr, "%") {
 						percentageStr = strings.ReplaceAll(percentageStr, "%", "%%")
 					}
-
 					return diskTotalStr, diskUsageStr, percentageStr, bootPath, nil
 				}
 			}
 		}
 	}
-
-	// 保持原有代码逻辑
 	tempDiskTotal, tempDiskUsage := getDiskTotalAndUsed()
 	diskTotalGB := float64(tempDiskTotal) / (1024 * 1024 * 1024)
 	diskUsageGB := float64(tempDiskUsage) / (1024 * 1024 * 1024)
-
-	// 字节为单位 进行单位转换
 	if diskTotalGB < 1 {
 		diskTotalStr = strconv.FormatFloat(diskTotalGB*1024, 'f', 2, 64) + " MB"
 	} else {
@@ -54,7 +67,6 @@ func getDiskInfo() (string, string, string, string, error) {
 	} else {
 		diskUsageStr = strconv.FormatFloat(diskUsageGB, 'f', 2, 64) + " GB"
 	}
-
 	if runtime.GOOS == "windows" {
 		parts, err := disk.Partitions(true)
 		if err != nil {
@@ -76,7 +88,6 @@ func getDiskInfo() (string, string, string, string, error) {
 		}
 	} else {
 		// 特殊处理 docker、lxc 等虚拟化使用 overlay 挂载的情况
-		// df -x tmpfs / | awk "NR>1" | sed ":a;N;s/\\n//g;ta" | awk '{print $1}'
 		cmd := exec.Command("df", "-x", "tmpfs", "/")
 		output, err := cmd.Output()
 		if err == nil {
@@ -115,8 +126,6 @@ func getDiskInfo() (string, string, string, string, error) {
 			}
 		}
 	}
-
-	// 两个%避免被转义
 	if percentageStr != "" && strings.Contains(percentageStr, "%") {
 		percentageStr = strings.ReplaceAll(percentageStr, "%", "%%")
 	}
@@ -124,6 +133,26 @@ func getDiskInfo() (string, string, string, string, error) {
 }
 
 func getDiskTotalAndUsed() (total uint64, used uint64) {
+	// MacOS特殊处理，直接用 df -k /
+	if runtime.GOOS == "darwin" {
+		cmd := exec.Command("df", "-k", "/")
+		out, err := cmd.CombinedOutput()
+		if err == nil {
+			lines := strings.Split(string(out), "\n")
+			if len(lines) >= 2 {
+				fields := strings.Fields(lines[1])
+				if len(fields) >= 6 {
+					totalKB, err1 := strconv.ParseUint(fields[1], 10, 64)
+					usedKB, err2 := strconv.ParseUint(fields[2], 10, 64)
+					if err1 == nil && err2 == nil {
+						total = totalKB * 1024
+						used = usedKB * 1024
+						return
+					}
+				}
+			}
+		}
+	}
 	devices := make(map[string]string)
 	// 使用默认过滤规则
 	diskList, _ := disk.Partitions(false)
@@ -141,18 +170,15 @@ func getDiskTotalAndUsed() (total uint64, used uint64) {
 			used += diskUsageOf.Used
 		}
 	}
-
-	// Fallback 到根路径的获取方法
+	// 回退到根路径的获取方法
 	if total == 0 && used == 0 {
 		var cmd *exec.Cmd
-
 		// BSD系统使用特定参数
 		if runtime.GOOS == "freebsd" || runtime.GOOS == "openbsd" || runtime.GOOS == "netbsd" {
 			cmd = exec.Command("df", "-k", "/")
 		} else {
 			cmd = exec.Command("df")
 		}
-
 		out, err := cmd.CombinedOutput()
 		if err == nil {
 			s := strings.Split(string(out), "\n")

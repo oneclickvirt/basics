@@ -168,9 +168,44 @@ func getHostInfo() (string, string, string, string, string, string, string, stri
 	// MAC需要额外获取信息进行判断
 	if runtime.GOOS == "darwin" {
 		if len(model.MacOSInfo) > 0 {
+			var modelName, modelIdentifier, chip, vendor string
 			for _, line := range model.MacOSInfo {
 				if strings.Contains(line, "Model Name") {
-					VmType = strings.TrimSpace(strings.Split(line, ":")[1])
+					modelName = strings.TrimSpace(strings.SplitN(line, ":", 2)[1])
+				} else if strings.Contains(line, "Model Identifier") {
+					modelIdentifier = strings.TrimSpace(strings.SplitN(line, ":", 2)[1])
+				} else if strings.Contains(line, "Chip") {
+					chip = strings.TrimSpace(strings.SplitN(line, ":", 2)[1])
+				} else if strings.Contains(line, "Manufacturer") || strings.Contains(line, "Vendor") {
+					vendor = strings.TrimSpace(strings.SplitN(line, ":", 2)[1])
+				}
+			}
+			allInfo := strings.ToLower(modelName + " " + modelIdentifier + " " + chip + " " + vendor)
+			virtualKeywords := []string{"vmware", "virtualbox", "parallels", "qemu", "microsoft", "xen"}
+			isVirtual := false
+			for _, key := range virtualKeywords {
+				if strings.Contains(allInfo, key) {
+					isVirtual = true
+					break
+				}
+			}
+			physicalWhitelist := []string{"mac mini", "macbook pro", "macbook air", "imac", "mac studio", "mac pro"}
+			if isVirtual {
+				VmType = "virtual"
+			} else {
+				foundPhysical := false
+				for _, p := range physicalWhitelist {
+					if strings.HasPrefix(strings.ToLower(modelName), p) {
+						foundPhysical = true
+						break
+					}
+				}
+				if foundPhysical {
+					VmType = "physical"
+				} else if modelName == "" {
+					VmType = "unknown"
+				} else {
+					VmType = modelName
 				}
 			}
 		}

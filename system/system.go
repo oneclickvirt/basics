@@ -6,6 +6,7 @@ import (
 
 	"github.com/oneclickvirt/basics/model"
 	"github.com/oneclickvirt/basics/system/utils"
+	precheckUtils "github.com/oneclickvirt/basics/utils"
 	. "github.com/oneclickvirt/defaultset"
 )
 
@@ -113,7 +114,9 @@ func CheckSystemInfo(language string) string {
 		res += " Current Time Zone   : " + ret.TimeZone + "\n"
 		res += " Load                : " + ret.Load + "\n"
 		res += " VM Type             : " + ret.VmType + "\n"
-		res += " NAT Type            : " + ret.NatType + "\n"
+		if precheckUtils.StackType != "" && precheckUtils.StackType != "None" {
+			res += " NAT Type            : " + ret.NatType + "\n"
+		}
 		if ret.TcpAccelerationMethod != "" {
 			res += " Tcp Accelerate      : " + ret.TcpAccelerationMethod + "\n"
 		}
@@ -165,7 +168,9 @@ func CheckSystemInfo(language string) string {
 		res += " 时区                : " + ret.TimeZone + "\n"
 		res += " 负载                : " + ret.Load + "\n"
 		res += " 虚拟化架构          : " + ret.VmType + "\n"
-		res += " NAT类型             : " + ret.NatType + "\n"
+		if precheckUtils.StackType != "" && precheckUtils.StackType != "None" {
+			res += " NAT类型             : " + ret.NatType + "\n"
+		}
 		if ret.TcpAccelerationMethod != "" {
 			res += " TCP加速方式         : " + ret.TcpAccelerationMethod + "\n"
 		}

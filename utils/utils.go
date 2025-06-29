@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+var StackType string // 联控stun检测
+
 type NetCheckResult struct {
 	HasIPv4   bool
 	HasIPv6   bool
@@ -151,6 +153,7 @@ result:
 	} else if hasV6 {
 		stack = "IPv6"
 	}
+	StackType = stack
 	return NetCheckResult{
 		HasIPv4:   hasV4,
 		HasIPv6:   hasV6,

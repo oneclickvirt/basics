@@ -13,6 +13,7 @@ import (
 	"github.com/libp2p/go-nat"
 	"github.com/oneclickvirt/basics/model"
 	"github.com/oneclickvirt/basics/system/utils"
+	precheckUtils "github.com/oneclickvirt/basics/utils"
 	"github.com/shirou/gopsutil/v4/host"
 )
 
@@ -211,13 +212,15 @@ func getHostInfo() (string, string, string, string, string, string, string, stri
 		}
 	}
 	// 查询NAT类型
-	NatType = getNatType()
-	if NatType == "Inconclusive" {
-		ctx := context.Background()
-		gateway, err := nat.DiscoverGateway(ctx)
-		if err == nil {
-			natType := gateway.Type()
-			NatType = natType
+	if precheckUtils.StackType != "" && precheckUtils.StackType != "None" {
+		NatType = getNatType()
+		if NatType == "Inconclusive" {
+			ctx := context.Background()
+			gateway, err := nat.DiscoverGateway(ctx)
+			if err == nil {
+				natType := gateway.Type()
+				NatType = natType
+			}
 		}
 	}
 	// 获取当前系统的本地时区

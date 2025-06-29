@@ -7,10 +7,12 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/oneclickvirt/basics/model"
 	"github.com/oneclickvirt/basics/network"
 	"github.com/oneclickvirt/basics/system"
+	"github.com/oneclickvirt/basics/utils"
 )
 
 func main() {
@@ -38,8 +40,16 @@ func main() {
 	go func() {
 		http.Get("https://hits.spiritlhl.net/basics.svg?action=hit&title=Hits&title_bg=%23555555&count_bg=%230eecf8&edge_flat=false")
 	}()
-	fmt.Println("项目地址:", "https://github.com/oneclickvirt/basics")
-	ipInfo, _, _ := network.NetworkCheck("both", false, language)
+	fmt.Println("Repo:", "https://github.com/oneclickvirt/basics")
+	preCheck := utils.CheckPublicAccess(3 * time.Second)
+	var ipInfo string
+	if preCheck.Connected && preCheck.StackType == "DualStack" {
+		ipInfo, _, _ = network.NetworkCheck("both", false, language)
+	} else if preCheck.Connected && preCheck.StackType == "IPv4" {
+		ipInfo, _, _ = network.NetworkCheck("ipv4", false, language)
+	} else if preCheck.Connected && preCheck.StackType == "IPv6" {
+		ipInfo, _, _ = network.NetworkCheck("ipv6", false, language)
+	}
 	res := system.CheckSystemInfo(language)
 	fmt.Println("--------------------------------------------------")
 	fmt.Printf(strings.ReplaceAll(res+ipInfo, "\n\n", "\n"))

@@ -11,11 +11,10 @@ Include: https://github.com/oneclickvirt/gostun
 ## 说明
 
 - [x] 以```-l```指定输出的语言类型，可指定```zh```或```en```，默认不指定时使用中文输出
-- [x] 使用```sysctl```获取CPU信息-特化适配freebsd、openbsd系统
+- [x] 使用```sysctl```获取CPU信息，特化适配freebsd、openbsd系统
 - [x] 适配```MacOS```与```Windows```系统的信息查询
-- [x] 部分Windows10系统下打勾打叉编码错误显示，已判断是Win时使用Y/N显示而不是勾叉
 - [x] 检测GPU相关信息，参考[ghw](https://github.com/jaypipes/ghw)
-- [x] 适配MACOS系统的相关信息识别
+- [x] 支持自动切换为离线模式仅检测系统基础信息，不再检测网络信息
 
 ## Usage
 

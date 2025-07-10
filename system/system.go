@@ -97,7 +97,7 @@ func CheckSystemInfo(language string) string {
 			} else {
 				label = fmt.Sprintf("Disk %d", i+1)
 			}
-			res += fmt.Sprintf(" %-21s: %s / %s", label, ret.DiskUsage[i], ret.DiskTotal[i])
+			res += fmt.Sprintf(" %-20s: %s / %s", label, ret.DiskUsage[i], ret.DiskTotal[i])
 			if i < len(ret.Percentage) && ret.Percentage[i] != "" {
 				res += fmt.Sprintf(" [%s]\n", ret.Percentage[i])
 			} else {
@@ -159,8 +159,7 @@ func CheckSystemInfo(language string) string {
 			} else {
 				label = fmt.Sprintf("硬盘空间 Disk %d", i+1)
 			}
-			res += fmt.Sprintf(" %-20s: %s / %s", label, ret.DiskUsage[i], ret.DiskTotal[i])
-
+			res += fmt.Sprintf(" %-16s: %s / %s", label, ret.DiskUsage[i], ret.DiskTotal[i])
 			if i < len(ret.Percentage) && ret.Percentage[i] != "" {
 				res += fmt.Sprintf(" [%s]\n", ret.Percentage[i])
 			} else {

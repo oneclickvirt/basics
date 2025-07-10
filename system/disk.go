@@ -33,35 +33,52 @@ func getDiskInfo() ([]string, []string, []string, string, error) {
 	var currentDiskInfo *DiskSingelInfo
 	// macOS 特殊适配
 	if runtime.GOOS == "darwin" {
-		cmd := exec.Command("df", "-h")
-		output, err := cmd.Output()
-		if err == nil {
+		// 获取所有APFS卷的挂载点
+		mountPoints := getMacOSMountPoints()
+		for _, mountPoint := range mountPoints {
+			cmd := exec.Command("df", "-k", mountPoint)
+			output, err := cmd.Output()
+			if err != nil {
+				continue
+			}
 			lines := strings.Split(string(output), "\n")
-			for i := 1; i < len(lines); i++ {
-				if strings.TrimSpace(lines[i]) == "" {
-					continue
-				}
-				fields := strings.Fields(lines[i])
-				if len(fields) >= 5 {
-					totalStr := fields[1]
-					totalBytes := parseSize(totalStr)
-					percentageStr := fields[4]
-					if strings.Contains(percentageStr, "%") {
-						percentageStr = strings.ReplaceAll(percentageStr, "%", "%%")
-					}
-					diskInfo := DiskSingelInfo{
-						TotalStr:      fields[1],
-						UsageStr:      fields[2],
-						PercentageStr: percentageStr,
-						BootPath:      fields[0],
-						TotalBytes:    totalBytes,
-					}
-					if len(fields) >= 6 && fields[5] == "/" {
-						bootPath = fields[0]
-						currentDiskInfo = &diskInfo
-					}
-					if totalBytes >= 200*1024*1024*1024 {
-						diskInfos = append(diskInfos, diskInfo)
+			if len(lines) >= 2 {
+				fields := strings.Fields(lines[1])
+				if len(fields) >= 6 {
+					totalKB, err1 := strconv.ParseUint(fields[1], 10, 64)
+					usedKB, err2 := strconv.ParseUint(fields[2], 10, 64)
+					if err1 == nil && err2 == nil {
+						totalBytes := totalKB * 1024
+						usedBytes := usedKB * 1024
+						diskTotalGB := float64(totalBytes) / (1024 * 1024 * 1024)
+						diskUsageGB := float64(usedBytes) / (1024 * 1024 * 1024)
+						var diskTotalStr, diskUsageStr string
+						if diskTotalGB < 1 {
+							diskTotalStr = strconv.FormatFloat(diskTotalGB*1024, 'f', 2, 64) + " MB"
+						} else {
+							diskTotalStr = strconv.FormatFloat(diskTotalGB, 'f', 2, 64) + " GB"
+						}
+						if diskUsageGB < 1 {
+							diskUsageStr = strconv.FormatFloat(diskUsageGB*1024, 'f', 2, 64) + " MB"
+						} else {
+							diskUsageStr = strconv.FormatFloat(diskUsageGB, 'f', 2, 64) + " GB"
+						}
+						percentage := float64(usedBytes) / float64(totalBytes) * 100
+						percentageStr := strconv.FormatFloat(percentage, 'f', 1, 64) + "%%"
+						diskInfo := DiskSingelInfo{
+							TotalStr:      diskTotalStr,
+							UsageStr:      diskUsageStr,
+							PercentageStr: percentageStr,
+							BootPath:      fields[0],
+							TotalBytes:    totalBytes,
+						}
+						if mountPoint == "/" {
+							bootPath = fields[0]
+							currentDiskInfo = &diskInfo
+						}
+						if totalBytes >= 200*1024*1024*1024 {
+							diskInfos = append(diskInfos, diskInfo)
+						}
 					}
 				}
 			}
@@ -269,6 +286,32 @@ func getDiskInfo() ([]string, []string, []string, string, error) {
 		percentageStrs = append(percentageStrs, info.PercentageStr)
 	}
 	return diskTotalStrs, diskUsageStrs, percentageStrs, bootPath, nil
+}
+
+// getMacOSMountPoints 获取macOS所有APFS卷的挂载点
+func getMacOSMountPoints() []string {
+	var mountPoints []string
+	mountPoints = append(mountPoints, "/")
+	cmd := exec.Command("diskutil", "list")
+	output, err := cmd.Output()
+	if err != nil {
+		return mountPoints
+	}
+	lines := strings.Split(string(output), "\n")
+	for _, line := range lines {
+		if strings.Contains(line, "APFS Volume") && !strings.Contains(line, "Preboot") && !strings.Contains(line, "Recovery") && !strings.Contains(line, "VM") {
+			fields := strings.Fields(line)
+			if len(fields) >= 4 {
+				volumeName := fields[3]
+				if volumeName == "Macintosh" || volumeName == "Data" {
+					continue
+				}
+				mountPoint := "/Volumes/" + volumeName
+				mountPoints = append(mountPoints, mountPoint)
+			}
+		}
+	}
+	return mountPoints
 }
 
 // parseSize 解析尺寸字符串为字节数

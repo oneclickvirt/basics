@@ -202,9 +202,9 @@ func getHostInfo() (string, string, string, string, string, string, string, stri
 					}
 				}
 				if foundPhysical {
-					VmType = "physical"
+					VmType = "Physical"
 				} else if modelName == "" {
-					VmType = "unknown"
+					VmType = "Unknown"
 				} else {
 					VmType = modelName
 				}

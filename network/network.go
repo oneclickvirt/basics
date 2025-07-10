@@ -123,7 +123,7 @@ func NetworkCheck(checkType string, enableSecurityCheck bool, language string) (
 	}
 	var ipInfo string
 	if checkType == "both" {
-		ipInfoV4Result, _, ipInfoV6Result, _, err := baseinfo.RunIpCheck("both")
+		ipInfoV4Result, ipInfoV6Result, err := baseinfo.RunIpCheck("both")
 		if err != nil && model.EnableLoger {
 			Logger.Info(err.Error())
 		}
@@ -135,7 +135,7 @@ func NetworkCheck(checkType string, enableSecurityCheck bool, language string) (
 		}
 		return ipInfo, "", nil
 	} else if checkType == "ipv4" {
-		ipInfoV4Result, _, _, _, err := baseinfo.RunIpCheck("ipv4")
+		ipInfoV4Result, _, err := baseinfo.RunIpCheck("ipv4")
 		if err != nil && model.EnableLoger {
 			Logger.Info(err.Error())
 		}
@@ -144,7 +144,7 @@ func NetworkCheck(checkType string, enableSecurityCheck bool, language string) (
 		}
 		return ipInfo, "", nil
 	} else if checkType == "ipv6" {
-		_, _, ipInfoV6Result, _, err := baseinfo.RunIpCheck("ipv6")
+		ipInfoV6Result, _, err := baseinfo.RunIpCheck("ipv6")
 		if err != nil && model.EnableLoger {
 			Logger.Info(err.Error())
 		}

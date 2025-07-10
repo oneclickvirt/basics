@@ -92,7 +92,7 @@ func CheckSystemInfo(language string) string {
 		}
 		for i := 0; i < len(ret.DiskUsage); i++ {
 			var label string
-			if i == 0 {
+			if i == 0 && len(ret.DiskUsage) == 1{
 				label = "Disk"
 			} else {
 				label = fmt.Sprintf("Disk %d", i+1)
@@ -154,7 +154,7 @@ func CheckSystemInfo(language string) string {
 		}
 		for i := 0; i < len(ret.DiskUsage); i++ {
 			var label string
-			if i == 0 {
+			if i == 0 && len(ret.DiskUsage) == 1 {
 				label = "硬盘空间"
 			} else {
 				label = fmt.Sprintf("硬盘空间 Disk %d", i+1)

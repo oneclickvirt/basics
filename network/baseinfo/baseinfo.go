@@ -150,20 +150,26 @@ func FetchMaxMind(netType string) (*model.IpInfo, error) {
 	}
 }
 
+// ipInfoWithSource 包装IP信息和来源
+type ipInfoWithSource struct {
+	info   *model.IpInfo
+	source string
+}
+
 // executeFunctions 并发执行函数
 // 仅区分IPV4或IPV6，BOTH的情况需要两次执行本函数分别指定
-func executeFunctions(checkType string, fetchFunc func(string) (*model.IpInfo, error), ipInfoChan chan *model.IpInfo, wg *sync.WaitGroup) {
+func executeFunctions(checkType string, fetchFunc func(string) (*model.IpInfo, error), funcName string, ipInfoChan chan *ipInfoWithSource, wg *sync.WaitGroup) {
 	defer wg.Done()
 	ipFetcher := func(ipType string) {
 		ipInfo, err := fetchFunc(ipType)
 		if err == nil {
 			select {
-			case ipInfoChan <- ipInfo:
+			case ipInfoChan <- &ipInfoWithSource{info: ipInfo, source: funcName}:
 			default:
 			}
 		} else {
 			select {
-			case ipInfoChan <- nil:
+			case ipInfoChan <- &ipInfoWithSource{info: nil, source: funcName}:
 			default:
 			}
 		}
@@ -190,35 +196,41 @@ func RunIpCheck(checkType string) (*model.IpInfo, *model.IpInfo, error) {
 		InitLogger()
 		defer Logger.Sync()
 	}
-	// 定义函数名数组
+	// 定义函数名数组和对应的函数
 	functions := []func(string) (*model.IpInfo, error){
 		FetchIPInfoIo,
+		FetchMaxMind,
 		FetchCloudFlare,
 		FetchIpSb,
-		FetchMaxMind,
+	}
+	funcNames := []string{
+		"ipinfo",
+		"maxmind",
+		"cloudflare",
+		"ipsb",
 	}
 	// 定义通道
-	ipInfoIPv4 := make(chan *model.IpInfo, len(functions))
-	ipInfoIPv6 := make(chan *model.IpInfo, len(functions))
+	ipInfoIPv4 := make(chan *ipInfoWithSource, len(functions))
+	ipInfoIPv6 := make(chan *ipInfoWithSource, len(functions))
 	var wg sync.WaitGroup
 	if checkType == "both" {
 		wg.Add(len(functions) * 2) // 每个函数都会产生一个 IPv4 和一个 IPv6 结果
 		// 启动协程执行函数
-		for _, f := range functions {
-			go executeFunctions("ipv4", f, ipInfoIPv4, &wg)
-			go executeFunctions("ipv6", f, ipInfoIPv6, &wg)
+		for i, f := range functions {
+			go executeFunctions("ipv4", f, funcNames[i], ipInfoIPv4, &wg)
+			go executeFunctions("ipv6", f, funcNames[i], ipInfoIPv6, &wg)
 		}
 	} else if checkType == "ipv4" {
 		wg.Add(len(functions)) // 每个函数都会产生一个 IPv4 结果
 		// 启动协程执行函数
-		for _, f := range functions {
-			go executeFunctions("ipv4", f, ipInfoIPv4, &wg)
+		for i, f := range functions {
+			go executeFunctions("ipv4", f, funcNames[i], ipInfoIPv4, &wg)
 		}
 	} else if checkType == "ipv6" {
 		wg.Add(len(functions)) // 每个函数都会产生一个 IPv6 结果
 		// 启动协程执行函数
-		for _, f := range functions {
-			go executeFunctions("ipv6", f, ipInfoIPv6, &wg)
+		for i, f := range functions {
+			go executeFunctions("ipv6", f, funcNames[i], ipInfoIPv6, &wg)
 		}
 	} else {
 		if model.EnableLoger {
@@ -231,35 +243,57 @@ func RunIpCheck(checkType string) (*model.IpInfo, *model.IpInfo, error) {
 		close(ipInfoIPv4)
 		close(ipInfoIPv6)
 	}()
-	// 读取结果并处理
-	var ipInfoV4Result *model.IpInfo
-	var ipInfoV6Result *model.IpInfo
+	// 收集并排序IPv4结果
+	ipInfoV4List := make([]*ipInfoWithSource, 0)
 	for ipInfo := range ipInfoIPv4 {
-		if ipInfo != nil {
-			if ipInfoV4Result == nil {
-				ipInfoV4Result = &model.IpInfo{}
-			}
-			ipInfoV4TempResult, err := utils.CompareAndMergeIpInfo(ipInfoV4Result, ipInfo)
-			if err == nil {
-				ipInfoV4Result = ipInfoV4TempResult
-			} else {
-				if model.EnableLoger {
-					Logger.Info(fmt.Sprintf("utils.CompareAndMergeIpInfo(ipInfoV4Result, ipInfo): %s", err.Error()))
+		ipInfoV4List = append(ipInfoV4List, ipInfo)
+	}
+	// 收集并排序IPv6结果
+	ipInfoV6List := make([]*ipInfoWithSource, 0)
+	for ipInfo := range ipInfoIPv6 {
+		ipInfoV6List = append(ipInfoV6List, ipInfo)
+	}
+	// 定义排序顺序
+	orderMap := map[string]int{
+		"ipinfo":     0,
+		"maxmind":    1,
+		"cloudflare": 2,
+		"ipsb":       3,
+	}
+	// 按顺序处理IPv4结果
+	var ipInfoV4Result *model.IpInfo
+	for order := 0; order < len(funcNames); order++ {
+		for _, ipInfoWithSrc := range ipInfoV4List {
+			if orderMap[ipInfoWithSrc.source] == order && ipInfoWithSrc.info != nil {
+				if ipInfoV4Result == nil {
+					ipInfoV4Result = &model.IpInfo{}
+				}
+				ipInfoV4TempResult, err := utils.CompareAndMergeIpInfo(ipInfoV4Result, ipInfoWithSrc.info)
+				if err == nil {
+					ipInfoV4Result = ipInfoV4TempResult
+				} else {
+					if model.EnableLoger {
+						Logger.Info(fmt.Sprintf("utils.CompareAndMergeIpInfo(ipInfoV4Result, ipInfo): %s", err.Error()))
+					}
 				}
 			}
 		}
 	}
-	for ipInfo := range ipInfoIPv6 {
-		if ipInfo != nil {
-			if ipInfoV6Result == nil {
-				ipInfoV6Result = &model.IpInfo{}
-			}
-			ipInfoV6TempResult, err := utils.CompareAndMergeIpInfo(ipInfoV6Result, ipInfo)
-			if err == nil {
-				ipInfoV6Result = ipInfoV6TempResult
-			} else {
-				if model.EnableLoger {
-					Logger.Info(fmt.Sprintf("utils.CompareAndMergeIpInfo(ipInfoV6Result, ipInfo): %s", err.Error()))
+	// 按顺序处理IPv6结果
+	var ipInfoV6Result *model.IpInfo
+	for order := 0; order < len(funcNames); order++ {
+		for _, ipInfoWithSrc := range ipInfoV6List {
+			if orderMap[ipInfoWithSrc.source] == order && ipInfoWithSrc.info != nil {
+				if ipInfoV6Result == nil {
+					ipInfoV6Result = &model.IpInfo{}
+				}
+				ipInfoV6TempResult, err := utils.CompareAndMergeIpInfo(ipInfoV6Result, ipInfoWithSrc.info)
+				if err == nil {
+					ipInfoV6Result = ipInfoV6TempResult
+				} else {
+					if model.EnableLoger {
+						Logger.Info(fmt.Sprintf("utils.CompareAndMergeIpInfo(ipInfoV6Result, ipInfo): %s", err.Error()))
+					}
 				}
 			}
 		}

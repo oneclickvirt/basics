@@ -15,6 +15,15 @@ var (
 		"apfs", "ext4", "ext3", "ext2", "f2fs", "reiserfs", "jfs", "bcachefs", "btrfs",
 		"fuseblk", "zfs", "simfs", "ntfs", "fat32", "exfat", "xfs", "fuse.rclone",
 	}
+	excludeFsTypes = []string{
+		"tmpfs", "devtmpfs", "sysfs", "proc", "devpts", "cgroup", "cgroup2",
+		"pstore", "bpf", "tracefs", "debugfs", "mqueue", "hugetlbfs",
+		"securityfs", "swap", "squashfs", "overlay", "aufs",
+	}
+	excludeMountPoints = []string{
+		"/dev/shm", "/run", "/sys", "/proc", "/tmp", "/var/tmp",
+		"/boot/efi", "/snap", "/var/lib/kubelet", "/var/lib/docker",
+	}
 	cpuType string
 )
 
@@ -89,7 +98,7 @@ func getMacOSAdditionalDisks(bootPath string) []DiskSingelInfo {
 	for _, d := range diskList {
 		fsType := strings.ToLower(d.Fstype)
 		if devices[d.Device] == "" && isListContainsStr(expectDiskFsTypes, fsType) &&
-			!strings.Contains(d.Mountpoint, "/var/lib/kubelet") && d.Device != bootPath {
+			!shouldExcludeMountPoint(d.Mountpoint) && d.Device != bootPath {
 			devices[d.Device] = d.Mountpoint
 		}
 	}
@@ -111,14 +120,23 @@ func getBSDDisks() ([]DiskSingelInfo, *DiskSingelInfo, string) {
 	output, err := cmd.Output()
 	if err == nil {
 		lines := strings.Split(string(output), "\n")
+		seenDevices := make(map[string]bool)
 		for i := 1; i < len(lines); i++ {
 			if strings.TrimSpace(lines[i]) == "" {
 				continue
 			}
 			fields := strings.Fields(lines[i])
 			if len(fields) >= 5 {
+				device := fields[0]
+				mountPoint := ""
+				if len(fields) >= 6 {
+					mountPoint = fields[5]
+				}
+				if seenDevices[device] || shouldExcludeMountPoint(mountPoint) {
+					continue
+				}
+				seenDevices[device] = true
 				totalBytes := parseSize(fields[1])
-				// usedBytes := parseSize(fields[2])
 				percentageStr := fields[4]
 				if percentageStr != "" && strings.Contains(percentageStr, "%") {
 					percentageStr = strings.ReplaceAll(percentageStr, "%", "%%")
@@ -127,11 +145,11 @@ func getBSDDisks() ([]DiskSingelInfo, *DiskSingelInfo, string) {
 					TotalStr:      fields[1],
 					UsageStr:      fields[2],
 					PercentageStr: percentageStr,
-					BootPath:      fields[0],
+					BootPath:      device,
 					TotalBytes:    totalBytes,
 				}
-				if len(fields) >= 6 && fields[5] == "/" {
-					bootPath = fields[0]
+				if mountPoint == "/" {
+					bootPath = device
 					currentDiskInfo = &diskInfo
 				}
 				diskInfos = append(diskInfos, diskInfo)
@@ -149,8 +167,13 @@ func getLinuxDisks() ([]DiskSingelInfo, *DiskSingelInfo, string) {
 	diskList, _ := disk.Partitions(false)
 	for _, d := range diskList {
 		fsType := strings.ToLower(d.Fstype)
-		if devices[d.Device] == "" && isListContainsStr(expectDiskFsTypes, fsType) &&
-			!strings.Contains(d.Mountpoint, "/var/lib/kubelet") {
+		if shouldExcludeFsType(fsType) {
+			continue
+		}
+		if shouldExcludeMountPoint(d.Mountpoint) {
+			continue
+		}
+		if devices[d.Device] == "" && isListContainsStr(expectDiskFsTypes, fsType) {
 			devices[d.Device] = d.Mountpoint
 		}
 	}
@@ -337,8 +360,13 @@ func getDiskTotalAndUsed() (total uint64, used uint64) {
 	diskList, _ := disk.Partitions(false)
 	for _, d := range diskList {
 		fsType := strings.ToLower(d.Fstype)
-		if devices[d.Device] == "" && isListContainsStr(expectDiskFsTypes, fsType) &&
-			!strings.Contains(d.Mountpoint, "/var/lib/kubelet") {
+		if shouldExcludeFsType(fsType) {
+			continue
+		}
+		if shouldExcludeMountPoint(d.Mountpoint) {
+			continue
+		}
+		if devices[d.Device] == "" && isListContainsStr(expectDiskFsTypes, fsType) {
 			devices[d.Device] = d.Mountpoint
 		}
 	}
@@ -382,6 +410,24 @@ func getDiskTotalAndUsed() (total uint64, used uint64) {
 		}
 	}
 	return
+}
+
+func shouldExcludeFsType(fsType string) bool {
+	for _, excludeType := range excludeFsTypes {
+		if strings.Contains(fsType, excludeType) {
+			return true
+		}
+	}
+	return false
+}
+
+func shouldExcludeMountPoint(mountPoint string) bool {
+	for _, excludePoint := range excludeMountPoints {
+		if strings.Contains(mountPoint, excludePoint) {
+			return true
+		}
+	}
+	return false
 }
 
 func isListContainsStr(list []string, str string) bool {

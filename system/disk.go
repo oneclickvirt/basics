@@ -94,20 +94,36 @@ func getMacOSDisks() ([]DiskSingelInfo, *DiskSingelInfo, string) {
 func getMacOSAdditionalDisks(bootPath string) []DiskSingelInfo {
 	var diskInfos []DiskSingelInfo
 	devices := make(map[string]string)
+	seenMountPoints := make(map[string]bool)
 	diskList, _ := disk.Partitions(false)
 	for _, d := range diskList {
 		fsType := strings.ToLower(d.Fstype)
-		if devices[d.Device] == "" && isListContainsStr(expectDiskFsTypes, fsType) &&
-			!shouldExcludeMountPoint(d.Mountpoint) && d.Device != bootPath {
-			devices[d.Device] = d.Mountpoint
+		if !isListContainsStr(expectDiskFsTypes, fsType) {
+			continue
 		}
+		if shouldExcludeMountPoint(d.Mountpoint) {
+			continue
+		}
+		if d.Device == bootPath {
+			continue
+		}
+		if seenMountPoints[d.Mountpoint] {
+			continue
+		}
+		seenMountPoints[d.Mountpoint] = true
+		devices[d.Device] = d.Mountpoint
 	}
+	uniqueDisks := make(map[string]DiskSingelInfo)
 	for device, mountPath := range devices {
 		diskUsageOf, err := disk.Usage(mountPath)
 		if err == nil && diskUsageOf.Total > 0 {
 			diskInfo := createDiskInfo(diskUsageOf.Total, diskUsageOf.Used, device)
-			diskInfos = append(diskInfos, diskInfo)
+			uniqueKey := strconv.FormatUint(diskUsageOf.Total, 10) + "_" + strconv.FormatUint(diskUsageOf.Used, 10)
+			uniqueDisks[uniqueKey] = diskInfo
 		}
+	}
+	for _, diskInfo := range uniqueDisks {
+		diskInfos = append(diskInfos, diskInfo)
 	}
 	return diskInfos
 }
@@ -283,7 +299,6 @@ func createDiskInfo(totalBytes, usedBytes uint64, bootPath string) DiskSingelInf
 	}
 	percentage := float64(usedBytes) / float64(totalBytes) * 100
 	percentageStr := strconv.FormatFloat(percentage, 'f', 1, 64) + "%%"
-
 	return DiskSingelInfo{
 		TotalStr:      diskTotalStr,
 		UsageStr:      diskUsageStr,

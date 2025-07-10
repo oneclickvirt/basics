@@ -43,15 +43,12 @@ func GetGPUModel() ([]string, error) {
 	vendorNames := []string{
 		"AMD", "Intel", "Nvidia", "Apple",
 	}
-
 	key := C.CString("model")
 	defer C.free(unsafe.Pointer(key))
-
 	gi, err := extractGPUInfo(key)
 	if err != nil {
 		return nil, err
 	}
-
 	var gpuModel []string
 	for _, model := range gi {
 		for _, vendor := range vendorNames {

@@ -33,51 +33,59 @@ func getDiskInfo() ([]string, []string, []string, string, error) {
 	var currentDiskInfo *DiskSingelInfo
 	// macOS 特殊适配
 	if runtime.GOOS == "darwin" {
-		// 获取所有APFS卷的挂载点
-		mountPoints := getMacOSMountPoints()
-		for _, mountPoint := range mountPoints {
-			cmd := exec.Command("df", "-k", mountPoint)
-			output, err := cmd.Output()
-			if err != nil {
-				continue
+		// 获取 APFS 容器信息
+		containers := getMacOSAPFSContainers()
+		for _, container := range containers {
+			if container.TotalBytes >= 200*1024*1024*1024 {
+				diskInfos = append(diskInfos, container)
 			}
-			lines := strings.Split(string(output), "\n")
-			if len(lines) >= 2 {
-				fields := strings.Fields(lines[1])
-				if len(fields) >= 6 {
-					totalKB, err1 := strconv.ParseUint(fields[1], 10, 64)
-					usedKB, err2 := strconv.ParseUint(fields[2], 10, 64)
-					if err1 == nil && err2 == nil {
-						totalBytes := totalKB * 1024
-						usedBytes := usedKB * 1024
-						diskTotalGB := float64(totalBytes) / (1024 * 1024 * 1024)
-						diskUsageGB := float64(usedBytes) / (1024 * 1024 * 1024)
-						var diskTotalStr, diskUsageStr string
-						if diskTotalGB < 1 {
-							diskTotalStr = strconv.FormatFloat(diskTotalGB*1024, 'f', 2, 64) + " MB"
-						} else {
-							diskTotalStr = strconv.FormatFloat(diskTotalGB, 'f', 2, 64) + " GB"
-						}
-						if diskUsageGB < 1 {
-							diskUsageStr = strconv.FormatFloat(diskUsageGB*1024, 'f', 2, 64) + " MB"
-						} else {
-							diskUsageStr = strconv.FormatFloat(diskUsageGB, 'f', 2, 64) + " GB"
-						}
-						percentage := float64(usedBytes) / float64(totalBytes) * 100
-						percentageStr := strconv.FormatFloat(percentage, 'f', 1, 64) + "%%"
-						diskInfo := DiskSingelInfo{
-							TotalStr:      diskTotalStr,
-							UsageStr:      diskUsageStr,
-							PercentageStr: percentageStr,
-							BootPath:      fields[0],
-							TotalBytes:    totalBytes,
-						}
-						if mountPoint == "/" {
+			// 检查是否包含根分区
+			if container.BootPath != "" && (strings.Contains(container.BootPath, "disk3") || container.BootPath == "/" || currentDiskInfo == nil) {
+				bootPath = container.BootPath
+				currentDiskInfo = &container
+			}
+		}
+		// 如果没有找到包含根分区的容器，使用 df 命令作为fallback
+		if currentDiskInfo == nil {
+			cmd := exec.Command("df", "-k", "/")
+			output, err := cmd.Output()
+			if err == nil {
+				lines := strings.Split(string(output), "\n")
+				if len(lines) >= 2 {
+					fields := strings.Fields(lines[1])
+					if len(fields) >= 6 {
+						totalKB, err1 := strconv.ParseUint(fields[1], 10, 64)
+						usedKB, err2 := strconv.ParseUint(fields[2], 10, 64)
+						if err1 == nil && err2 == nil {
+							totalBytes := totalKB * 1024
+							usedBytes := usedKB * 1024
+							diskTotalGB := float64(totalBytes) / (1024 * 1024 * 1024)
+							diskUsageGB := float64(usedBytes) / (1024 * 1024 * 1024)
+							var diskTotalStr, diskUsageStr string
+							if diskTotalGB < 1 {
+								diskTotalStr = strconv.FormatFloat(diskTotalGB*1024, 'f', 2, 64) + " MB"
+							} else {
+								diskTotalStr = strconv.FormatFloat(diskTotalGB, 'f', 2, 64) + " GB"
+							}
+							if diskUsageGB < 1 {
+								diskUsageStr = strconv.FormatFloat(diskUsageGB*1024, 'f', 2, 64) + " MB"
+							} else {
+								diskUsageStr = strconv.FormatFloat(diskUsageGB, 'f', 2, 64) + " GB"
+							}
+							percentage := float64(usedBytes) / float64(totalBytes) * 100
+							percentageStr := strconv.FormatFloat(percentage, 'f', 1, 64) + "%%"
+							diskInfo := DiskSingelInfo{
+								TotalStr:      diskTotalStr,
+								UsageStr:      diskUsageStr,
+								PercentageStr: percentageStr,
+								BootPath:      fields[0],
+								TotalBytes:    totalBytes,
+							}
 							bootPath = fields[0]
 							currentDiskInfo = &diskInfo
-						}
-						if totalBytes >= 200*1024*1024*1024 {
-							diskInfos = append(diskInfos, diskInfo)
+							if totalBytes >= 200*1024*1024*1024 {
+								diskInfos = append(diskInfos, diskInfo)
+							}
 						}
 					}
 				}
@@ -288,30 +296,92 @@ func getDiskInfo() ([]string, []string, []string, string, error) {
 	return diskTotalStrs, diskUsageStrs, percentageStrs, bootPath, nil
 }
 
-// getMacOSMountPoints 获取macOS所有APFS卷的挂载点
-func getMacOSMountPoints() []string {
-	var mountPoints []string
-	mountPoints = append(mountPoints, "/")
-	cmd := exec.Command("diskutil", "list")
+// getMacOSAPFSContainers 获取macOS APFS容器信息
+func getMacOSAPFSContainers() []DiskSingelInfo {
+	var containers []DiskSingelInfo
+	cmd := exec.Command("diskutil", "apfs", "list")
 	output, err := cmd.Output()
 	if err != nil {
-		return mountPoints
+		return containers
 	}
 	lines := strings.Split(string(output), "\n")
+	var currentContainer *DiskSingelInfo
+	var totalBytes, usedBytes uint64
+	var containerDisk string
 	for _, line := range lines {
-		if strings.Contains(line, "APFS Volume") && !strings.Contains(line, "Preboot") && !strings.Contains(line, "Recovery") && !strings.Contains(line, "VM") {
+		line = strings.TrimSpace(line)
+		if strings.Contains(line, "Container disk") {
+			if currentContainer != nil {
+				containers = append(containers, *currentContainer)
+			}
 			fields := strings.Fields(line)
-			if len(fields) >= 4 {
-				volumeName := fields[3]
-				if volumeName == "Macintosh" || volumeName == "Data" {
-					continue
+			if len(fields) >= 2 {
+				containerDisk = fields[1]
+				currentContainer = &DiskSingelInfo{
+					BootPath: containerDisk,
 				}
-				mountPoint := "/Volumes/" + volumeName
-				mountPoints = append(mountPoints, mountPoint)
+			}
+		} else if currentContainer != nil {
+			if strings.Contains(line, "Size (Capacity Ceiling):") {
+				parts := strings.Split(line, ":")
+				if len(parts) >= 2 {
+					sizeStr := strings.TrimSpace(parts[1])
+					if strings.Contains(sizeStr, " B ") {
+						sizeFields := strings.Fields(sizeStr)
+						if len(sizeFields) >= 1 {
+							if size, err := strconv.ParseUint(sizeFields[0], 10, 64); err == nil {
+								totalBytes = size
+							}
+						}
+					}
+				}
+			}
+			if strings.Contains(line, "Capacity In Use By Volumes:") {
+				parts := strings.Split(line, ":")
+				if len(parts) >= 2 {
+					usedStr := strings.TrimSpace(parts[1])
+					if strings.Contains(usedStr, " B ") {
+						usedFields := strings.Fields(usedStr)
+						if len(usedFields) >= 1 {
+							if used, err := strconv.ParseUint(usedFields[0], 10, 64); err == nil {
+								usedBytes = used
+							}
+						}
+					}
+				}
+			}
+			if strings.Contains(line, "Snapshot Mount Point:") && strings.Contains(line, "/") {
+				currentContainer.BootPath = containerDisk
 			}
 		}
+		if currentContainer != nil && totalBytes > 0 && usedBytes > 0 {
+			diskTotalGB := float64(totalBytes) / (1024 * 1024 * 1024)
+			diskUsageGB := float64(usedBytes) / (1024 * 1024 * 1024)
+			var diskTotalStr, diskUsageStr string
+			if diskTotalGB < 1 {
+				diskTotalStr = strconv.FormatFloat(diskTotalGB*1024, 'f', 2, 64) + " MB"
+			} else {
+				diskTotalStr = strconv.FormatFloat(diskTotalGB, 'f', 2, 64) + " GB"
+			}
+			if diskUsageGB < 1 {
+				diskUsageStr = strconv.FormatFloat(diskUsageGB*1024, 'f', 2, 64) + " MB"
+			} else {
+				diskUsageStr = strconv.FormatFloat(diskUsageGB, 'f', 2, 64) + " GB"
+			}
+			percentage := float64(usedBytes) / float64(totalBytes) * 100
+			percentageStr := strconv.FormatFloat(percentage, 'f', 1, 64) + "%%"
+			currentContainer.TotalStr = diskTotalStr
+			currentContainer.UsageStr = diskUsageStr
+			currentContainer.PercentageStr = percentageStr
+			currentContainer.TotalBytes = totalBytes
+			totalBytes = 0
+			usedBytes = 0
+		}
 	}
-	return mountPoints
+	if currentContainer != nil {
+		containers = append(containers, *currentContainer)
+	}
+	return containers
 }
 
 // parseSize 解析尺寸字符串为字节数

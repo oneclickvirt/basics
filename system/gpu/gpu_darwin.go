@@ -13,7 +13,6 @@ func extractGPUInfo(cmd *exec.Cmd) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	re := regexp.MustCompile(`"model"\s*=\s*["<]?"([^">]+)"[">]?`)
 	matches := re.FindAllSubmatch(gi, -1)
 	var modelNames []string
@@ -29,7 +28,6 @@ func GetGPUModel() ([]string, error) {
 	vendorNames := []string{
 		"AMD", "Intel", "Nvidia", "Apple",
 	}
-
 	ioreg := exec.Command("ioreg", "-rd1", "-c", "IOAccelerator")
 	gi, err := extractGPUInfo(ioreg)
 	if err != nil || len(gi) == 0 {
@@ -39,7 +37,6 @@ func GetGPUModel() ([]string, error) {
 			return nil, err
 		}
 	}
-
 	var gpuModel []string
 	for _, model := range gi {
 		for _, vendor := range vendorNames {

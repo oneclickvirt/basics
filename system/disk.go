@@ -50,16 +50,70 @@ func getDiskInfo() ([]string, []string, []string, string, error) {
 		currentDiskInfo = getFallbackDiskInfo()
 	}
 	finalDiskInfos := consolidateDiskInfos(diskInfos, currentDiskInfo)
-	sort.Slice(finalDiskInfos, func(i, j int) bool {
-		return finalDiskInfos[i].TotalBytes > finalDiskInfos[j].TotalBytes
+	filteredDiskInfos := filterSmallDisks(finalDiskInfos)
+	dedupedDiskInfos := deduplicateSameSizeDisks(filteredDiskInfos)
+	sort.Slice(dedupedDiskInfos, func(i, j int) bool {
+		return dedupedDiskInfos[i].TotalBytes > dedupedDiskInfos[j].TotalBytes
 	})
 	var diskTotalStrs, diskUsageStrs, percentageStrs []string
-	for _, info := range finalDiskInfos {
+	for _, info := range dedupedDiskInfos {
 		diskTotalStrs = append(diskTotalStrs, info.TotalStr)
 		diskUsageStrs = append(diskUsageStrs, info.UsageStr)
 		percentageStrs = append(percentageStrs, info.PercentageStr)
 	}
 	return diskTotalStrs, diskUsageStrs, percentageStrs, bootPath, nil
+}
+
+func filterSmallDisks(diskInfos []DiskSingelInfo) []DiskSingelInfo {
+	if len(diskInfos) <= 1 {
+		return diskInfos
+	}
+	var filtered []DiskSingelInfo
+	oneGB := uint64(1024 * 1024 * 1024)
+	for _, info := range diskInfos {
+		if info.TotalBytes >= oneGB {
+			filtered = append(filtered, info)
+		}
+	}
+	if len(filtered) == 0 {
+		return diskInfos
+	}
+	return filtered
+}
+
+func deduplicateSameSizeDisks(diskInfos []DiskSingelInfo) []DiskSingelInfo {
+	if len(diskInfos) <= 1 {
+		return diskInfos
+	}
+	sizeMap := make(map[uint64][]DiskSingelInfo)
+	for _, info := range diskInfos {
+		sizeMap[info.TotalBytes] = append(sizeMap[info.TotalBytes], info)
+	}
+	var result []DiskSingelInfo
+	for _, disks := range sizeMap {
+		if len(disks) == 1 {
+			result = append(result, disks[0])
+		} else {
+			maxUsage := disks[0]
+			for _, disk := range disks[1:] {
+				maxUsagePercent := parsePercentage(maxUsage.PercentageStr)
+				diskUsagePercent := parsePercentage(disk.PercentageStr)
+				if diskUsagePercent > maxUsagePercent {
+					maxUsage = disk
+				}
+			}
+			result = append(result, maxUsage)
+		}
+	}
+	return result
+}
+
+func parsePercentage(percentStr string) float64 {
+	cleanStr := strings.ReplaceAll(percentStr, "%", "")
+	if value, err := strconv.ParseFloat(cleanStr, 64); err == nil {
+		return value
+	}
+	return 0
 }
 
 func getMacOSDisks() ([]DiskSingelInfo, *DiskSingelInfo, string) {

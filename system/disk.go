@@ -23,6 +23,7 @@ var (
 	excludeMountPoints = []string{
 		"/dev/shm", "/run", "/sys", "/proc", "/tmp", "/var/tmp",
 		"/boot/efi", "/snap", "/var/lib/kubelet", "/var/lib/docker",
+		"/var/lib/lxd", "/var/lib/incus", "/snap", "/vz/root",
 	}
 	cpuType string
 )

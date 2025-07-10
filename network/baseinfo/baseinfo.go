@@ -105,6 +105,51 @@ func FetchIpSb(netType string) (*model.IpInfo, error) {
 	}
 }
 
+// FetchMaxMind 从 MaxMind 获取 IP 信息
+func FetchMaxMind(netType string) (*model.IpInfo, error) {
+	data, err := utils.FetchJsonFromURL("https://geoip.maxmind.com/geoip/v2.1/city/me", netType, true, "Referer: https://www.maxmind.com/en/locate-my-ip-address")
+	if err == nil {
+		res := &model.IpInfo{}
+		if traits, ok := data["traits"].(map[string]interface{}); ok {
+			if ip, ok := traits["ip_address"].(string); ok && ip != "" {
+				res.Ip = ip
+			}
+			if asnFloat, ok := traits["autonomous_system_number"].(float64); ok {
+				res.ASN = strconv.FormatInt(int64(asnFloat), 10)
+			}
+			if org, ok := traits["autonomous_system_organization"].(string); ok && org != "" {
+				res.Org = org
+			}
+		}
+		if city, ok := data["city"].(map[string]interface{}); ok {
+			if names, ok := city["names"].(map[string]interface{}); ok {
+				if cityName, ok := names["en"].(string); ok && cityName != "" {
+					res.City = cityName
+				}
+			}
+		}
+		if subdivisions, ok := data["subdivisions"].([]interface{}); ok && len(subdivisions) > 0 {
+			if subdivision, ok := subdivisions[0].(map[string]interface{}); ok {
+				if names, ok := subdivision["names"].(map[string]interface{}); ok {
+					if regionName, ok := names["en"].(string); ok && regionName != "" {
+						res.Region = regionName
+					}
+				}
+			}
+		}
+		if country, ok := data["country"].(map[string]interface{}); ok {
+			if names, ok := country["names"].(map[string]interface{}); ok {
+				if countryName, ok := names["en"].(string); ok && countryName != "" {
+					res.Country = countryName
+				}
+			}
+		}
+		return res, nil
+	} else {
+		return nil, err
+	}
+}
+
 // executeFunctions 并发执行函数
 // 仅区分IPV4或IPV6，BOTH的情况需要两次执行本函数分别指定
 func executeFunctions(checkType string, fetchFunc func(string) (*model.IpInfo, error), ipInfoChan chan *model.IpInfo, wg *sync.WaitGroup) {
@@ -150,6 +195,7 @@ func RunIpCheck(checkType string) (*model.IpInfo, *model.IpInfo, error) {
 		FetchIPInfoIo,
 		FetchCloudFlare,
 		FetchIpSb,
+		FetchMaxMind,
 	}
 	// 定义通道
 	ipInfoIPv4 := make(chan *model.IpInfo, len(functions))

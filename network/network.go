@@ -84,21 +84,17 @@ func processPrintIPInfo(ipVersion, language string, ipResult *model.IpInfo) stri
 		prefixActive, prefixTotal, err2 := baseinfo.GetActiveIpsCount(cidrIp, cidrPrefix)
 		if (err1 == nil && subnetActive > 0 && subnetTotal > 0) || (err2 == nil && prefixActive > 0 && prefixTotal > 0) {
 			info += " IPV4 Active IPs     :"
-			if err1 == nil {
+			if err1 == nil && subnetActive > 0 && subnetTotal > 0 {
 				info += fmt.Sprintf(" %d/%d (subnet /24)", subnetActive, subnetTotal)
-			} else {
-				if model.EnableLoger {
-					Logger.Info(fmt.Sprintf("subnet /24 data unavailable: %s", err1.Error()))
-				}
+			} else if err1 != nil && model.EnableLoger {
+				Logger.Info(fmt.Sprintf("subnet /24 data unavailable: %s", err1.Error()))
 			}
-			if err2 == nil {
+			if err2 == nil && prefixActive > 0 && prefixTotal > 0 {
 				if cidrPrefix != 24 {
 					info += fmt.Sprintf(" %d/%d (prefix /%d)", prefixActive, prefixTotal, cidrPrefix)
 				}
-			} else {
-				if model.EnableLoger {
-					Logger.Info(fmt.Sprintf("prefix data unavailable: %s", err2.Error()))
-				}
+			} else if err2 != nil && model.EnableLoger {
+				Logger.Info(fmt.Sprintf("prefix data unavailable: %s", err2.Error()))
 			}
 			info += "\n"
 		}

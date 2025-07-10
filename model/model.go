@@ -111,9 +111,9 @@ type MemoryInfo struct {
 }
 
 type DiskInfo struct {
-	DiskUsage  string
-	DiskTotal  string
-	Percentage string
+	DiskUsage  []string
+	DiskTotal  []string
+	Percentage []string
 	BootPath   string
 }
 

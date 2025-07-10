@@ -3,122 +3,196 @@ package system
 import (
 	"os/exec"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/shirou/gopsutil/v4/disk"
 )
 
+var (
+	expectDiskFsTypes = []string{
+		"apfs", "ext4", "ext3", "ext2", "f2fs", "reiserfs", "jfs", "bcachefs", "btrfs",
+		"fuseblk", "zfs", "simfs", "ntfs", "fat32", "exfat", "xfs", "fuse.rclone",
+	}
+	cpuType string
+)
+
+type DiskSingelInfo struct {
+	TotalStr      string
+	UsageStr      string
+	PercentageStr string
+	BootPath      string
+	TotalBytes    uint64
+}
+
 // getDiskInfo 获取硬盘信息
-func getDiskInfo() (string, string, string, string, error) {
-	var diskTotalStr, diskUsageStr, percentageStr, bootPath string
+func getDiskInfo() ([]string, []string, []string, string, error) {
+	var bootPath string
+	var diskInfos []DiskSingelInfo
+	var currentDiskInfo *DiskSingelInfo
 	// macOS 特殊适配
 	if runtime.GOOS == "darwin" {
-		cmd := exec.Command("df", "-h", "/")
+		cmd := exec.Command("df", "-h")
 		output, err := cmd.Output()
 		if err == nil {
 			lines := strings.Split(string(output), "\n")
-			if len(lines) >= 2 {
-				fields := strings.Fields(lines[1])
+			for i := 1; i < len(lines); i++ {
+				if strings.TrimSpace(lines[i]) == "" {
+					continue
+				}
+				fields := strings.Fields(lines[i])
 				if len(fields) >= 5 {
-					bootPath = fields[0]
-					diskTotalStr = fields[1]
-					diskUsageStr = fields[2]
-					percentageStr = fields[4]
+					totalStr := fields[1]
+					totalBytes := parseSize(totalStr)
+					percentageStr := fields[4]
 					if strings.Contains(percentageStr, "%") {
 						percentageStr = strings.ReplaceAll(percentageStr, "%", "%%")
 					}
-					return diskTotalStr, diskUsageStr, percentageStr, bootPath, nil
+					diskInfo := DiskSingelInfo{
+						TotalStr:      fields[1],
+						UsageStr:      fields[2],
+						PercentageStr: percentageStr,
+						BootPath:      fields[0],
+						TotalBytes:    totalBytes,
+					}
+					if len(fields) >= 6 && fields[5] == "/" {
+						bootPath = fields[0]
+						currentDiskInfo = &diskInfo
+					}
+					if totalBytes >= 200*1024*1024*1024 {
+						diskInfos = append(diskInfos, diskInfo)
+					}
 				}
 			}
 		}
-	}
-	// BSD系统特殊处理
-	if runtime.GOOS == "freebsd" || runtime.GOOS == "openbsd" || runtime.GOOS == "netbsd" {
-		cmd := exec.Command("df", "-h", "/")
+	} else if runtime.GOOS == "freebsd" || runtime.GOOS == "openbsd" || runtime.GOOS == "netbsd" {
+		// BSD系统特殊处理
+		cmd := exec.Command("df", "-h")
 		output, err := cmd.Output()
 		if err == nil {
 			lines := strings.Split(string(output), "\n")
-			if len(lines) >= 2 {
-				fields := strings.Fields(lines[1])
+			for i := 1; i < len(lines); i++ {
+				if strings.TrimSpace(lines[i]) == "" {
+					continue
+				}
+				fields := strings.Fields(lines[i])
 				if len(fields) >= 5 {
-					bootPath = fields[0]
-					diskTotalStr = fields[1]
-					diskUsageStr = fields[2]
-					percentageStr = fields[4]
+					totalStr := fields[1]
+					totalBytes := parseSize(totalStr)
+					percentageStr := fields[4]
 					if percentageStr != "" && strings.Contains(percentageStr, "%") {
 						percentageStr = strings.ReplaceAll(percentageStr, "%", "%%")
 					}
-					return diskTotalStr, diskUsageStr, percentageStr, bootPath, nil
-				}
-			}
-		}
-	}
-	tempDiskTotal, tempDiskUsage := getDiskTotalAndUsed()
-	diskTotalGB := float64(tempDiskTotal) / (1024 * 1024 * 1024)
-	diskUsageGB := float64(tempDiskUsage) / (1024 * 1024 * 1024)
-	if diskTotalGB < 1 {
-		diskTotalStr = strconv.FormatFloat(diskTotalGB*1024, 'f', 2, 64) + " MB"
-	} else {
-		diskTotalStr = strconv.FormatFloat(diskTotalGB, 'f', 2, 64) + " GB"
-	}
-	if diskUsageGB < 1 {
-		diskUsageStr = strconv.FormatFloat(diskUsageGB*1024, 'f', 2, 64) + " MB"
-	} else {
-		diskUsageStr = strconv.FormatFloat(diskUsageGB, 'f', 2, 64) + " GB"
-	}
-	if runtime.GOOS == "windows" {
-		parts, err := disk.Partitions(true)
-		if err != nil {
-			bootPath = ""
-		} else {
-			for _, part := range parts {
-				if part.Fstype == "tmpfs" {
-					continue
-				}
-				usageStat, err := disk.Usage(part.Mountpoint)
-				if err != nil {
-					continue
-				}
-				if usageStat.Total > 0 {
-					bootPath = part.Mountpoint
-					break
-				}
-			}
-		}
-	} else {
-		// 特殊处理 docker、lxc 等虚拟化使用 overlay 挂载的情况
-		cmd := exec.Command("df", "-x", "tmpfs", "/")
-		output, err := cmd.Output()
-		if err == nil {
-			lines := strings.Split(string(output), "\n")
-			if len(lines) >= 2 {
-				fields := strings.Split(strings.TrimSpace(lines[1]), " ")
-				var nonEmptyFields []string
-				for _, field := range fields {
-					if field != "" {
-						nonEmptyFields = append(nonEmptyFields, field)
+					diskInfo := DiskSingelInfo{
+						TotalStr:      fields[1],
+						UsageStr:      fields[2],
+						PercentageStr: percentageStr,
+						BootPath:      fields[0],
+						TotalBytes:    totalBytes,
+					}
+					if len(fields) >= 6 && fields[5] == "/" {
+						bootPath = fields[0]
+						currentDiskInfo = &diskInfo
+					}
+					if totalBytes >= 200*1024*1024*1024 {
+						diskInfos = append(diskInfos, diskInfo)
 					}
 				}
-				if len(nonEmptyFields) > 0 && nonEmptyFields[0] != "" {
-					bootPath = nonEmptyFields[0]
-					if strings.Contains(bootPath, "overlay") && len(nonEmptyFields) >= 5 {
-						tpDiskTotal, err1 := strconv.Atoi(nonEmptyFields[1])
-						tpDiskUsage, err2 := strconv.Atoi(nonEmptyFields[2])
-						if err1 == nil && err2 == nil {
-							diskTotalGB = float64(tpDiskTotal) / (1024 * 1024)
-							diskUsageGB = float64(tpDiskUsage) / (1024 * 1024)
-							if diskTotalGB < 1 {
-								diskTotalStr = strconv.FormatFloat(diskTotalGB*1024, 'f', 2, 64) + " MB"
-								percentageStr = nonEmptyFields[4]
-							} else {
-								diskTotalStr = strconv.FormatFloat(diskTotalGB, 'f', 2, 64) + " GB"
-								percentageStr = nonEmptyFields[4]
-							}
-							if diskUsageGB < 1 {
-								diskUsageStr = strconv.FormatFloat(diskUsageGB*1024, 'f', 2, 64) + " MB"
-							} else {
-								diskUsageStr = strconv.FormatFloat(diskUsageGB, 'f', 2, 64) + " GB"
+			}
+		}
+	} else {
+		// 其他系统使用gopsutil
+		devices := make(map[string]string)
+		diskList, _ := disk.Partitions(false)
+		for _, d := range diskList {
+			fsType := strings.ToLower(d.Fstype)
+			if devices[d.Device] == "" && isListContainsStr(expectDiskFsTypes, fsType) && !strings.Contains(d.Mountpoint, "/var/lib/kubelet") {
+				devices[d.Device] = d.Mountpoint
+			}
+		}
+		for device, mountPath := range devices {
+			diskUsageOf, err := disk.Usage(mountPath)
+			if err == nil && diskUsageOf.Total > 0 {
+				diskTotalGB := float64(diskUsageOf.Total) / (1024 * 1024 * 1024)
+				diskUsageGB := float64(diskUsageOf.Used) / (1024 * 1024 * 1024)
+				var diskTotalStr, diskUsageStr string
+				if diskTotalGB < 1 {
+					diskTotalStr = strconv.FormatFloat(diskTotalGB*1024, 'f', 2, 64) + " MB"
+				} else {
+					diskTotalStr = strconv.FormatFloat(diskTotalGB, 'f', 2, 64) + " GB"
+				}
+				if diskUsageGB < 1 {
+					diskUsageStr = strconv.FormatFloat(diskUsageGB*1024, 'f', 2, 64) + " MB"
+				} else {
+					diskUsageStr = strconv.FormatFloat(diskUsageGB, 'f', 2, 64) + " GB"
+				}
+				percentageStr := strconv.FormatFloat(float64(diskUsageOf.Used)/float64(diskUsageOf.Total)*100, 'f', 1, 64) + "%%"
+				diskInfo := DiskSingelInfo{
+					TotalStr:      diskTotalStr,
+					UsageStr:      diskUsageStr,
+					PercentageStr: percentageStr,
+					BootPath:      device,
+					TotalBytes:    diskUsageOf.Total,
+				}
+				if mountPath == "/" || (bootPath == "" && runtime.GOOS == "windows") {
+					bootPath = device
+					currentDiskInfo = &diskInfo
+				}
+				if diskUsageOf.Total >= 200*1024*1024*1024 {
+					diskInfos = append(diskInfos, diskInfo)
+				}
+			}
+		}
+		// 特殊处理 docker、lxc 等虚拟化使用 overlay 挂载的情况
+		if currentDiskInfo == nil && runtime.GOOS == "linux" {
+			cmd := exec.Command("df", "-x", "tmpfs", "/")
+			output, err := cmd.Output()
+			if err == nil {
+				lines := strings.Split(string(output), "\n")
+				if len(lines) >= 2 {
+					fields := strings.Split(strings.TrimSpace(lines[1]), " ")
+					var nonEmptyFields []string
+					for _, field := range fields {
+						if field != "" {
+							nonEmptyFields = append(nonEmptyFields, field)
+						}
+					}
+					if len(nonEmptyFields) > 0 && nonEmptyFields[0] != "" {
+						if strings.Contains(nonEmptyFields[0], "overlay") && len(nonEmptyFields) >= 5 {
+							tpDiskTotal, err1 := strconv.Atoi(nonEmptyFields[1])
+							tpDiskUsage, err2 := strconv.Atoi(nonEmptyFields[2])
+							if err1 == nil && err2 == nil {
+								totalBytes := uint64(tpDiskTotal) * 1024
+								diskTotalGB := float64(tpDiskTotal) / (1024 * 1024)
+								diskUsageGB := float64(tpDiskUsage) / (1024 * 1024)
+								var diskTotalStr, diskUsageStr string
+								if diskTotalGB < 1 {
+									diskTotalStr = strconv.FormatFloat(diskTotalGB*1024, 'f', 2, 64) + " MB"
+								} else {
+									diskTotalStr = strconv.FormatFloat(diskTotalGB, 'f', 2, 64) + " GB"
+								}
+								if diskUsageGB < 1 {
+									diskUsageStr = strconv.FormatFloat(diskUsageGB*1024, 'f', 2, 64) + " MB"
+								} else {
+									diskUsageStr = strconv.FormatFloat(diskUsageGB, 'f', 2, 64) + " GB"
+								}
+								percentageStr := nonEmptyFields[4]
+								if percentageStr != "" && strings.Contains(percentageStr, "%") {
+									percentageStr = strings.ReplaceAll(percentageStr, "%", "%%")
+								}
+								diskInfo := DiskSingelInfo{
+									TotalStr:      diskTotalStr,
+									UsageStr:      diskUsageStr,
+									PercentageStr: percentageStr,
+									BootPath:      nonEmptyFields[0],
+									TotalBytes:    totalBytes,
+								}
+								bootPath = nonEmptyFields[0]
+								currentDiskInfo = &diskInfo
+								if totalBytes >= 200*1024*1024*1024 {
+									diskInfos = append(diskInfos, diskInfo)
+								}
 							}
 						}
 					}
@@ -126,10 +200,119 @@ func getDiskInfo() (string, string, string, string, error) {
 			}
 		}
 	}
-	if percentageStr != "" && strings.Contains(percentageStr, "%") {
-		percentageStr = strings.ReplaceAll(percentageStr, "%", "%%")
+	if currentDiskInfo == nil {
+		tempDiskTotal, tempDiskUsage := getDiskTotalAndUsed()
+		if tempDiskTotal > 0 {
+			diskTotalGB := float64(tempDiskTotal) / (1024 * 1024 * 1024)
+			diskUsageGB := float64(tempDiskUsage) / (1024 * 1024 * 1024)
+			var diskTotalStr, diskUsageStr string
+			if diskTotalGB < 1 {
+				diskTotalStr = strconv.FormatFloat(diskTotalGB*1024, 'f', 2, 64) + " MB"
+			} else {
+				diskTotalStr = strconv.FormatFloat(diskTotalGB, 'f', 2, 64) + " GB"
+			}
+			if diskUsageGB < 1 {
+				diskUsageStr = strconv.FormatFloat(diskUsageGB*1024, 'f', 2, 64) + " MB"
+			} else {
+				diskUsageStr = strconv.FormatFloat(diskUsageGB, 'f', 2, 64) + " GB"
+			}
+			percentageStr := strconv.FormatFloat(float64(tempDiskUsage)/float64(tempDiskTotal)*100, 'f', 1, 64) + "%%"
+			diskInfo := DiskSingelInfo{
+				TotalStr:      diskTotalStr,
+				UsageStr:      diskUsageStr,
+				PercentageStr: percentageStr,
+				BootPath:      "/",
+				TotalBytes:    tempDiskTotal,
+			}
+			currentDiskInfo = &diskInfo
+			if tempDiskTotal >= 200*1024*1024*1024 {
+				diskInfos = append(diskInfos, diskInfo)
+			}
+		}
 	}
-	return diskTotalStr, diskUsageStr, percentageStr, bootPath, nil
+	// 应用逻辑：
+	// 1. 如果完全没有盘大于200GB，返回当前磁盘
+	// 2. 如果有盘大于200GB但当前磁盘不大于200GB，返回大于200GB的磁盘+当前磁盘
+	// 3. 如果当前磁盘和其他磁盘都大于200GB，返回所有大于200GB的磁盘
+	var finalDiskInfos []DiskSingelInfo
+	if len(diskInfos) == 0 {
+		// 情况1：没有大于200GB的磁盘，返回当前磁盘
+		if currentDiskInfo != nil {
+			finalDiskInfos = append(finalDiskInfos, *currentDiskInfo)
+		}
+	} else {
+		// 情况2和3：有大于200GB的磁盘
+		finalDiskInfos = diskInfos
+		// 如果当前磁盘不在大于200GB列表中，需要添加
+		currentInList := false
+		if currentDiskInfo != nil {
+			for _, info := range diskInfos {
+				if info.BootPath == currentDiskInfo.BootPath {
+					currentInList = true
+					break
+				}
+			}
+			if !currentInList {
+				finalDiskInfos = append(finalDiskInfos, *currentDiskInfo)
+			}
+		}
+	}
+	// 按容量从大到小排序
+	sort.Slice(finalDiskInfos, func(i, j int) bool {
+		return finalDiskInfos[i].TotalBytes > finalDiskInfos[j].TotalBytes
+	})
+	// 提取切片
+	var diskTotalStrs, diskUsageStrs, percentageStrs []string
+	for _, info := range finalDiskInfos {
+		diskTotalStrs = append(diskTotalStrs, info.TotalStr)
+		diskUsageStrs = append(diskUsageStrs, info.UsageStr)
+		percentageStrs = append(percentageStrs, info.PercentageStr)
+	}
+	return diskTotalStrs, diskUsageStrs, percentageStrs, bootPath, nil
+}
+
+// parseSize 解析尺寸字符串为字节数
+func parseSize(sizeStr string) uint64 {
+	sizeStr = strings.TrimSpace(sizeStr)
+	if sizeStr == "" {
+		return 0
+	}
+	var multiplier uint64 = 1
+	sizeStr = strings.ToUpper(sizeStr)
+	if strings.HasSuffix(sizeStr, "KB") || strings.HasSuffix(sizeStr, "K") {
+		multiplier = 1024
+		if strings.HasSuffix(sizeStr, "KB") {
+			sizeStr = strings.TrimSuffix(sizeStr, "KB")
+		} else {
+			sizeStr = strings.TrimSuffix(sizeStr, "K")
+		}
+	} else if strings.HasSuffix(sizeStr, "MB") || strings.HasSuffix(sizeStr, "M") {
+		multiplier = 1024 * 1024
+		if strings.HasSuffix(sizeStr, "MB") {
+			sizeStr = strings.TrimSuffix(sizeStr, "MB")
+		} else {
+			sizeStr = strings.TrimSuffix(sizeStr, "M")
+		}
+	} else if strings.HasSuffix(sizeStr, "GB") || strings.HasSuffix(sizeStr, "G") {
+		multiplier = 1024 * 1024 * 1024
+		if strings.HasSuffix(sizeStr, "GB") {
+			sizeStr = strings.TrimSuffix(sizeStr, "GB")
+		} else {
+			sizeStr = strings.TrimSuffix(sizeStr, "G")
+		}
+	} else if strings.HasSuffix(sizeStr, "TB") || strings.HasSuffix(sizeStr, "T") {
+		multiplier = 1024 * 1024 * 1024 * 1024
+		if strings.HasSuffix(sizeStr, "TB") {
+			sizeStr = strings.TrimSuffix(sizeStr, "TB")
+		} else {
+			sizeStr = strings.TrimSuffix(sizeStr, "T")
+		}
+	}
+	value, err := strconv.ParseFloat(sizeStr, 64)
+	if err != nil {
+		return 0
+	}
+	return uint64(value * float64(multiplier))
 }
 
 func getDiskTotalAndUsed() (total uint64, used uint64) {

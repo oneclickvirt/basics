@@ -1,6 +1,7 @@
 package system
 
 import (
+	"fmt"
 	"runtime"
 	"strconv"
 
@@ -8,14 +9,6 @@ import (
 	"github.com/oneclickvirt/basics/system/utils"
 	precheckUtils "github.com/oneclickvirt/basics/utils"
 	. "github.com/oneclickvirt/defaultset"
-)
-
-var (
-	expectDiskFsTypes = []string{
-		"apfs", "ext4", "ext3", "ext2", "f2fs", "reiserfs", "jfs", "bcachefs", "btrfs",
-		"fuseblk", "zfs", "simfs", "ntfs", "fat32", "exfat", "xfs", "fuse.rclone",
-	}
-	cpuType string
 )
 
 // GetSystemInfo 获取主机硬件信息
@@ -97,11 +90,19 @@ func CheckSystemInfo(language string) string {
 		} else if ret.SwapTotal != "" && ret.SwapUsage != "" {
 			res += " Swap                : " + ret.SwapUsage + " / " + ret.SwapTotal + "\n"
 		}
-		res += " Disk                : " + ret.DiskUsage + " / " + ret.DiskTotal
-		if ret.Percentage != "" {
-			res += " [" + ret.Percentage + "] " + "\n"
-		} else {
-			res += "\n"
+		for i := 0; i < len(ret.DiskUsage); i++ {
+			var label string
+			if i == 0 {
+				label = "Disk"
+			} else {
+				label = fmt.Sprintf("Disk %d", i+1)
+			}
+			res += fmt.Sprintf(" %-21s: %s / %s", label, ret.DiskUsage[i], ret.DiskTotal[i])
+			if i < len(ret.Percentage) && ret.Percentage[i] != "" {
+				res += fmt.Sprintf(" [%s]\n", ret.Percentage[i])
+			} else {
+				res += "\n"
+			}
 		}
 		if ret.BootPath != "" {
 			res += " Boot Path           : " + ret.BootPath + "\n"
@@ -151,11 +152,20 @@ func CheckSystemInfo(language string) string {
 		} else if ret.SwapTotal != "" && ret.SwapUsage != "" {
 			res += " 虚拟内存 Swap       : " + ret.SwapUsage + " / " + ret.SwapTotal + "\n"
 		}
-		res += " 硬盘空间            : " + ret.DiskUsage + " / " + ret.DiskTotal
-		if ret.Percentage != "" {
-			res += " [" + ret.Percentage + "] " + "\n"
-		} else {
-			res += "\n"
+		for i := 0; i < len(ret.DiskUsage); i++ {
+			var label string
+			if i == 0 {
+				label = "硬盘空间"
+			} else {
+				label = fmt.Sprintf("硬盘空间 Disk %d", i+1)
+			}
+			res += fmt.Sprintf(" %-20s: %s / %s", label, ret.DiskUsage[i], ret.DiskTotal[i])
+
+			if i < len(ret.Percentage) && ret.Percentage[i] != "" {
+				res += fmt.Sprintf(" [%s]\n", ret.Percentage[i])
+			} else {
+				res += "\n"
+			}
 		}
 		if ret.BootPath != "" {
 			res += " 启动盘路径          : " + ret.BootPath + "\n"

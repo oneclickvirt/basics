@@ -2,6 +2,7 @@ package system
 
 import (
 	"os/exec"
+	"regexp"
 	"runtime"
 	"sort"
 	"strconv"
@@ -135,14 +136,6 @@ func getPhysicalDiskName(device string) string {
 	return device
 }
 
-func parsePercentage(percentStr string) float64 {
-	cleanStr := strings.ReplaceAll(percentStr, "%", "")
-	if value, err := strconv.ParseFloat(cleanStr, 64); err == nil {
-		return value
-	}
-	return 0
-}
-
 func getMacOSDisks() ([]DiskSingelInfo, *DiskSingelInfo, string) {
 	var diskInfos []DiskSingelInfo
 	var currentDiskInfo *DiskSingelInfo
@@ -176,17 +169,17 @@ func getMacOSAdditionalDisks(bootPath string) []DiskSingelInfo {
 	var diskInfos []DiskSingelInfo
 	devices := make(map[string]string)
 	seenMountPoints := make(map[string]bool)
-	diskList, _ := disk.Partitions(false)
+	diskList, _ := disk.Partitions(true)
 	for _, d := range diskList {
 		fsType := strings.ToLower(d.Fstype)
 		if !isListContainsStr(expectDiskFsTypes, fsType) {
 			continue
 		}
-		if shouldExcludeMountPoint(d.Mountpoint) {
+		if !strings.HasPrefix(d.Mountpoint, "/Volumes") && shouldExcludeMountPoint(d.Mountpoint) {
 			continue
 		}
 		if d.Device == bootPath {
-			// continue
+			continue
 		}
 		if seenMountPoints[d.Mountpoint] {
 			continue
@@ -199,7 +192,7 @@ func getMacOSAdditionalDisks(bootPath string) []DiskSingelInfo {
 		diskUsageOf, err := disk.Usage(mountPath)
 		if err == nil && diskUsageOf.Total > 0 {
 			diskInfo := createDiskInfo(diskUsageOf.Total, diskUsageOf.Used, device, mountPath)
-			physicalDisk := getPhysicalDiskName(device)
+			physicalDisk := extractDiskX(device)
 			physicalDisks[physicalDisk] = append(physicalDisks[physicalDisk], diskInfo)
 		}
 	}
@@ -217,6 +210,15 @@ func getMacOSAdditionalDisks(bootPath string) []DiskSingelInfo {
 		}
 	}
 	return diskInfos
+}
+
+func extractDiskX(device string) string {
+	re := regexp.MustCompile(`/dev/disk[0-9]+`)
+	match := re.FindString(device)
+	if match != "" {
+		return match
+	}
+	return device
 }
 
 func getBSDDisks() ([]DiskSingelInfo, *DiskSingelInfo, string) {

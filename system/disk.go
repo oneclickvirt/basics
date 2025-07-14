@@ -53,7 +53,7 @@ func getDiskInfo() ([]string, []string, []string, []string, string, error) {
 	}
 	finalDiskInfos := consolidateDiskInfos(diskInfos, currentDiskInfo)
 	filteredDiskInfos := filterSmallDisks(finalDiskInfos)
-	dedupedDiskInfos := deduplicateSameSizeDisks(filteredDiskInfos)
+	dedupedDiskInfos := deduplicatePhysicalDisks(filteredDiskInfos)
 	sort.Slice(dedupedDiskInfos, func(i, j int) bool {
 		return dedupedDiskInfos[i].TotalBytes > dedupedDiskInfos[j].TotalBytes
 	})
@@ -84,31 +84,52 @@ func filterSmallDisks(diskInfos []DiskSingelInfo) []DiskSingelInfo {
 	return filtered
 }
 
-func deduplicateSameSizeDisks(diskInfos []DiskSingelInfo) []DiskSingelInfo {
+func deduplicatePhysicalDisks(diskInfos []DiskSingelInfo) []DiskSingelInfo {
 	if len(diskInfos) <= 1 {
 		return diskInfos
 	}
-	sizeMap := make(map[uint64][]DiskSingelInfo)
+	
+	physicalDisks := make(map[string][]DiskSingelInfo)
+	
 	for _, info := range diskInfos {
-		sizeMap[info.TotalBytes] = append(sizeMap[info.TotalBytes], info)
+		physicalDisk := getPhysicalDiskName(info.BootPath)
+		physicalDisks[physicalDisk] = append(physicalDisks[physicalDisk], info)
 	}
+	
 	var result []DiskSingelInfo
-	for _, disks := range sizeMap {
+	for _, disks := range physicalDisks {
 		if len(disks) == 1 {
 			result = append(result, disks[0])
 		} else {
-			maxUsage := disks[0]
+			largest := disks[0]
 			for _, disk := range disks[1:] {
-				maxUsagePercent := parsePercentage(maxUsage.PercentageStr)
-				diskUsagePercent := parsePercentage(disk.PercentageStr)
-				if diskUsagePercent > maxUsagePercent {
-					maxUsage = disk
+				if disk.TotalBytes > largest.TotalBytes {
+					largest = disk
 				}
 			}
-			result = append(result, maxUsage)
+			result = append(result, largest)
 		}
 	}
 	return result
+}
+
+func getPhysicalDiskName(device string) string {
+	if strings.HasPrefix(device, "/dev/sd") {
+		return "/dev/sd" + string(device[7])
+	}
+	if strings.HasPrefix(device, "/dev/nvme") {
+		parts := strings.Split(device, "p")
+		if len(parts) > 1 {
+			return parts[0]
+		}
+	}
+	if strings.HasPrefix(device, "/dev/mmcblk") {
+		parts := strings.Split(device, "p")
+		if len(parts) > 1 {
+			return parts[0]
+		}
+	}
+	return device
 }
 
 func parsePercentage(percentStr string) float64 {

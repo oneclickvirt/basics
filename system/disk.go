@@ -33,10 +33,11 @@ type DiskSingelInfo struct {
 	UsageStr      string
 	PercentageStr string
 	BootPath      string
+	MountPath     string
 	TotalBytes    uint64
 }
 
-func getDiskInfo() ([]string, []string, []string, string, error) {
+func getDiskInfo() ([]string, []string, []string, []string, string, error) {
 	var bootPath string
 	var diskInfos []DiskSingelInfo
 	var currentDiskInfo *DiskSingelInfo
@@ -56,13 +57,14 @@ func getDiskInfo() ([]string, []string, []string, string, error) {
 	sort.Slice(dedupedDiskInfos, func(i, j int) bool {
 		return dedupedDiskInfos[i].TotalBytes > dedupedDiskInfos[j].TotalBytes
 	})
-	var diskTotalStrs, diskUsageStrs, percentageStrs []string
+	var diskTotalStrs, diskUsageStrs, percentageStrs, diskRealPaths []string
 	for _, info := range dedupedDiskInfos {
 		diskTotalStrs = append(diskTotalStrs, info.TotalStr)
 		diskUsageStrs = append(diskUsageStrs, info.UsageStr)
 		percentageStrs = append(percentageStrs, info.PercentageStr)
+		diskRealPaths = append(diskRealPaths, info.MountPath)
 	}
-	return diskTotalStrs, diskUsageStrs, percentageStrs, bootPath, nil
+	return diskTotalStrs, diskUsageStrs, percentageStrs, diskRealPaths, bootPath, nil
 }
 
 func filterSmallDisks(diskInfos []DiskSingelInfo) []DiskSingelInfo {
@@ -133,7 +135,7 @@ func getMacOSDisks() ([]DiskSingelInfo, *DiskSingelInfo, string) {
 				if err1 == nil && err2 == nil {
 					totalBytes := totalKB * 1024
 					usedBytes := usedKB * 1024
-					diskInfo := createDiskInfo(totalBytes, usedBytes, fields[0])
+					diskInfo := createDiskInfo(totalBytes, usedBytes, fields[0], fields[5])
 					bootPath = fields[0]
 					currentDiskInfo = &diskInfo
 					diskInfos = append(diskInfos, diskInfo)
@@ -172,7 +174,7 @@ func getMacOSAdditionalDisks(bootPath string) []DiskSingelInfo {
 	for device, mountPath := range devices {
 		diskUsageOf, err := disk.Usage(mountPath)
 		if err == nil && diskUsageOf.Total > 0 {
-			diskInfo := createDiskInfo(diskUsageOf.Total, diskUsageOf.Used, device)
+			diskInfo := createDiskInfo(diskUsageOf.Total, diskUsageOf.Used, device, mountPath)
 			uniqueKey := strconv.FormatUint(diskUsageOf.Total, 10) + "_" + strconv.FormatUint(diskUsageOf.Used, 10)
 			uniqueDisks[uniqueKey] = diskInfo
 		}
@@ -217,6 +219,7 @@ func getBSDDisks() ([]DiskSingelInfo, *DiskSingelInfo, string) {
 					UsageStr:      fields[2],
 					PercentageStr: percentageStr,
 					BootPath:      device,
+					MountPath:     mountPoint,
 					TotalBytes:    totalBytes,
 				}
 				if mountPoint == "/" {
@@ -251,7 +254,7 @@ func getLinuxDisks() ([]DiskSingelInfo, *DiskSingelInfo, string) {
 	for device, mountPath := range devices {
 		diskUsageOf, err := disk.Usage(mountPath)
 		if err == nil && diskUsageOf.Total > 0 {
-			diskInfo := createDiskInfo(diskUsageOf.Total, diskUsageOf.Used, device)
+			diskInfo := createDiskInfo(diskUsageOf.Total, diskUsageOf.Used, device, mountPath)
 			if mountPath == "/" || (bootPath == "" && runtime.GOOS == "windows") {
 				bootPath = device
 				currentDiskInfo = &diskInfo
@@ -297,7 +300,7 @@ func getOverlayDisk() *DiskSingelInfo {
 			if percentageStr != "" && strings.Contains(percentageStr, "%") {
 				percentageStr = strings.ReplaceAll(percentageStr, "%", "%%")
 			}
-			diskInfo := createDiskInfo(totalBytes, usedBytes, nonEmptyFields[0])
+			diskInfo := createDiskInfo(totalBytes, usedBytes, nonEmptyFields[0], "/")
 			diskInfo.PercentageStr = percentageStr
 			return &diskInfo
 		}
@@ -308,7 +311,7 @@ func getOverlayDisk() *DiskSingelInfo {
 func getFallbackDiskInfo() *DiskSingelInfo {
 	tempDiskTotal, tempDiskUsage := getDiskTotalAndUsed()
 	if tempDiskTotal > 0 {
-		diskInfo := createDiskInfo(tempDiskTotal, tempDiskUsage, "/")
+		diskInfo := createDiskInfo(tempDiskTotal, tempDiskUsage, "/", "/")
 		return &diskInfo
 	}
 	return nil
@@ -338,7 +341,7 @@ func consolidateDiskInfos(diskInfos []DiskSingelInfo, currentDiskInfo *DiskSinge
 	return finalDiskInfos
 }
 
-func createDiskInfo(totalBytes, usedBytes uint64, bootPath string) DiskSingelInfo {
+func createDiskInfo(totalBytes, usedBytes uint64, bootPath, mountPath string) DiskSingelInfo {
 	diskTotalGB := float64(totalBytes) / (1024 * 1024 * 1024)
 	diskUsageGB := float64(usedBytes) / (1024 * 1024 * 1024)
 	var diskTotalStr, diskUsageStr string
@@ -359,6 +362,7 @@ func createDiskInfo(totalBytes, usedBytes uint64, bootPath string) DiskSingelInf
 		UsageStr:      diskUsageStr,
 		PercentageStr: percentageStr,
 		BootPath:      bootPath,
+		MountPath:     mountPath,
 		TotalBytes:    totalBytes,
 	}
 }
@@ -494,6 +498,14 @@ func shouldExcludeFsType(fsType string) bool {
 func shouldExcludeMountPoint(mountPoint string) bool {
 	for _, excludePoint := range excludeMountPoints {
 		if strings.Contains(mountPoint, excludePoint) {
+			if strings.Contains(mountPoint, "/run") {
+				if usage, err := disk.Usage(mountPoint); err == nil {
+					hundredGB := uint64(100 * 1024 * 1024 * 1024)
+					if usage.Total > hundredGB {
+						return false
+					}
+				}
+			}
 			return true
 		}
 	}

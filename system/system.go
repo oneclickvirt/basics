@@ -38,7 +38,7 @@ func GetSystemInfo() *model.SystemInfo {
 		Logger.Info(err.Error())
 	}
 	// 硬盘信息查询
-	ret.DiskTotal, ret.DiskUsage, ret.Percentage, ret.BootPath, err = getDiskInfo()
+	ret.DiskTotal, ret.DiskUsage, ret.Percentage, ret.DiskRealPath, ret.BootPath, err = getDiskInfo()
 	if err != nil && model.EnableLoger {
 		Logger.Info(err.Error())
 	}
@@ -92,14 +92,19 @@ func CheckSystemInfo(language string) string {
 		}
 		for i := 0; i < len(ret.DiskUsage); i++ {
 			var label string
-			if i == 0 && len(ret.DiskUsage) == 1{
+			if i == 0 && len(ret.DiskUsage) == 1 {
 				label = "Disk"
 			} else {
 				label = fmt.Sprintf("Disk %d", i+1)
 			}
 			res += fmt.Sprintf(" %-20s: %s / %s", label, ret.DiskUsage[i], ret.DiskTotal[i])
 			if i < len(ret.Percentage) && ret.Percentage[i] != "" {
-				res += fmt.Sprintf(" [%s]\n", ret.Percentage[i])
+				res += fmt.Sprintf(" [%s]", ret.Percentage[i])
+				if ret.DiskRealPath[i] != "" {
+					res += fmt.Sprintf(" %s", ret.DiskRealPath[i])
+				} else {
+					res += "\n"
+				}
 			} else {
 				res += "\n"
 			}
@@ -161,7 +166,12 @@ func CheckSystemInfo(language string) string {
 			}
 			res += fmt.Sprintf(" %-16s: %s / %s", label, ret.DiskUsage[i], ret.DiskTotal[i])
 			if i < len(ret.Percentage) && ret.Percentage[i] != "" {
-				res += fmt.Sprintf(" [%s]\n", ret.Percentage[i])
+				res += fmt.Sprintf(" [%s]", ret.Percentage[i])
+				if ret.DiskRealPath[i] != "" {
+					res += fmt.Sprintf(" %s", ret.DiskRealPath[i])
+				} else {
+					res += "\n"
+				}
 			} else {
 				res += "\n"
 			}

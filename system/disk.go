@@ -114,7 +114,7 @@ func deduplicatePhysicalDisks(diskInfos []DiskSingelInfo) []DiskSingelInfo {
 }
 
 func getPhysicalDiskName(device string) string {
-	if strings.HasPrefix(device, "/dev/sd") {
+	if strings.HasPrefix(device, "/dev/sd") && len(device) > 7 {
 		return "/dev/sd" + string(device[7])
 	}
 	if strings.HasPrefix(device, "/dev/nvme") {
@@ -125,6 +125,12 @@ func getPhysicalDiskName(device string) string {
 	}
 	if strings.HasPrefix(device, "/dev/mmcblk") {
 		parts := strings.Split(device, "p")
+		if len(parts) > 1 {
+			return parts[0]
+		}
+	}
+	if strings.HasPrefix(device, "/dev/disk") {
+		parts := strings.Split(device, "s")
 		if len(parts) > 1 {
 			return parts[0]
 		}
@@ -191,17 +197,27 @@ func getMacOSAdditionalDisks(bootPath string) []DiskSingelInfo {
 		seenMountPoints[d.Mountpoint] = true
 		devices[d.Device] = d.Mountpoint
 	}
-	uniqueDisks := make(map[string]DiskSingelInfo)
+	physicalDisks := make(map[string][]DiskSingelInfo)
 	for device, mountPath := range devices {
 		diskUsageOf, err := disk.Usage(mountPath)
 		if err == nil && diskUsageOf.Total > 0 {
 			diskInfo := createDiskInfo(diskUsageOf.Total, diskUsageOf.Used, device, mountPath)
-			uniqueKey := strconv.FormatUint(diskUsageOf.Total, 10) + "_" + strconv.FormatUint(diskUsageOf.Used, 10)
-			uniqueDisks[uniqueKey] = diskInfo
+			physicalDisk := getPhysicalDiskName(device)
+			physicalDisks[physicalDisk] = append(physicalDisks[physicalDisk], diskInfo)
 		}
 	}
-	for _, diskInfo := range uniqueDisks {
-		diskInfos = append(diskInfos, diskInfo)
+	for _, disks := range physicalDisks {
+		if len(disks) == 1 {
+			diskInfos = append(diskInfos, disks[0])
+		} else {
+			largest := disks[0]
+			for _, disk := range disks[1:] {
+				if disk.TotalBytes > largest.TotalBytes {
+					largest = disk
+				}
+			}
+			diskInfos = append(diskInfos, largest)
+		}
 	}
 	return diskInfos
 }

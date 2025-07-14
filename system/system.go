@@ -101,7 +101,7 @@ func CheckSystemInfo(language string) string {
 			if i < len(ret.Percentage) && ret.Percentage[i] != "" {
 				res += fmt.Sprintf(" [%s]", ret.Percentage[i])
 				if ret.DiskRealPath[i] != "" {
-					res += fmt.Sprintf(" (%s)\n", ret.DiskRealPath[i])
+					res += fmt.Sprintf(" %s\n", ret.DiskRealPath[i])
 				} else {
 					res += "\n"
 				}
@@ -168,7 +168,7 @@ func CheckSystemInfo(language string) string {
 			if i < len(ret.Percentage) && ret.Percentage[i] != "" {
 				res += fmt.Sprintf(" [%s]", ret.Percentage[i])
 				if ret.DiskRealPath[i] != "" {
-					res += fmt.Sprintf(" (%s)\n", ret.DiskRealPath[i])
+					res += fmt.Sprintf(" %s\n", ret.DiskRealPath[i])
 				} else {
 					res += "\n"
 				}

@@ -534,7 +534,7 @@ func shouldExcludeMountPoint(mountPoint string) bool {
 		if strings.Contains(mountPoint, excludePoint) {
 			if strings.Contains(mountPoint, "/run") {
 				if usage, err := disk.Usage(mountPoint); err == nil {
-					hundredGB := uint64(99 * 1024 * 1024 * 1024)
+					hundredGB := uint64(100 * 1024 * 1024 * 1024)
 					if usage.Total > hundredGB {
 						return false
 					}

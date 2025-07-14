@@ -63,7 +63,11 @@ func getDiskInfo() ([]string, []string, []string, []string, string, error) {
 		diskTotalStrs = append(diskTotalStrs, info.TotalStr)
 		diskUsageStrs = append(diskUsageStrs, info.UsageStr)
 		percentageStrs = append(percentageStrs, info.PercentageStr)
-		diskRealPaths = append(diskRealPaths, info.BootPath+" - "+info.MountPath)
+		if info.BootPath != info.MountPath {
+			diskRealPaths = append(diskRealPaths, info.BootPath+" - "+info.MountPath)
+		} else {
+			diskRealPaths = append(diskRealPaths, info.MountPath)
+		}
 	}
 	return diskTotalStrs, diskUsageStrs, percentageStrs, diskRealPaths, bootPath, nil
 }

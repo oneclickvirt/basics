@@ -102,24 +102,24 @@ func deduplicatePhysicalDisks(diskInfos []DiskSingelInfo, currentDiskInfo *DiskS
 				largest = disk
 			}
 		}
+		hasCurrent := false
 		if currentDiskInfo != nil {
 			currentPhysical := getPhysicalDiskName(currentDiskInfo.BootPath)
 			if physicalDisk == currentPhysical {
-				alreadyAdded := false
 				for _, d := range disks {
 					if d.BootPath == currentDiskInfo.BootPath && d.MountPath == currentDiskInfo.MountPath {
-						alreadyAdded = true
 						result = append(result, d)
+						hasCurrent = true
 						break
 					}
 				}
-				if !alreadyAdded {
-					result = append(result, *currentDiskInfo)
-				}
-				continue
 			}
 		}
-		result = append(result, largest)
+		if largest.BootPath != currentDiskInfo.BootPath || largest.MountPath != currentDiskInfo.MountPath {
+			result = append(result, largest)
+		} else if !hasCurrent {
+			result = append(result, largest)
+		}
 	}
 	return result
 }

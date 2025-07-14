@@ -186,7 +186,7 @@ func getMacOSAdditionalDisks(bootPath string) []DiskSingelInfo {
 			continue
 		}
 		if d.Device == bootPath {
-			continue
+			// continue
 		}
 		if seenMountPoints[d.Mountpoint] {
 			continue

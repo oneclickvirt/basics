@@ -88,14 +88,11 @@ func deduplicatePhysicalDisks(diskInfos []DiskSingelInfo) []DiskSingelInfo {
 	if len(diskInfos) <= 1 {
 		return diskInfos
 	}
-	
 	physicalDisks := make(map[string][]DiskSingelInfo)
-	
 	for _, info := range diskInfos {
 		physicalDisk := getPhysicalDiskName(info.BootPath)
 		physicalDisks[physicalDisk] = append(physicalDisks[physicalDisk], info)
 	}
-	
 	var result []DiskSingelInfo
 	for _, disks := range physicalDisks {
 		if len(disks) == 1 {

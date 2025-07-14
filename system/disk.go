@@ -354,27 +354,26 @@ func getFallbackDiskInfo() *DiskSingelInfo {
 }
 
 func consolidateDiskInfos(diskInfos []DiskSingelInfo, currentDiskInfo *DiskSingelInfo) []DiskSingelInfo {
-	var finalDiskInfos []DiskSingelInfo
-	if len(diskInfos) == 0 {
-		if currentDiskInfo != nil {
-			finalDiskInfos = append(finalDiskInfos, *currentDiskInfo)
-		}
-	} else {
-		finalDiskInfos = diskInfos
-		if currentDiskInfo != nil {
-			currentInList := false
-			for _, info := range diskInfos {
-				if info.BootPath == currentDiskInfo.BootPath {
-					currentInList = true
-					break
-				}
-			}
-			if !currentInList {
-				finalDiskInfos = append(finalDiskInfos, *currentDiskInfo)
-			}
+	diskMap := make(map[string]DiskSingelInfo)
+	for _, info := range diskInfos {
+		physicalName := getPhysicalDiskName(info.BootPath)
+		existing, ok := diskMap[physicalName]
+		if !ok || info.TotalBytes > existing.TotalBytes {
+			diskMap[physicalName] = info
 		}
 	}
-	return finalDiskInfos
+	if currentDiskInfo != nil {
+		physName := getPhysicalDiskName(currentDiskInfo.BootPath)
+		_, exists := diskMap[physName]
+		if !exists {
+			diskMap[physName] = *currentDiskInfo
+		}
+	}
+	var result []DiskSingelInfo
+	for _, v := range diskMap {
+		result = append(result, v)
+	}
+	return result
 }
 
 func createDiskInfo(totalBytes, usedBytes uint64, bootPath, mountPath string) DiskSingelInfo {

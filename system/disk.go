@@ -54,7 +54,7 @@ func getDiskInfo() ([]string, []string, []string, []string, string, error) {
 	}
 	finalDiskInfos := consolidateDiskInfos(diskInfos, currentDiskInfo)
 	filteredDiskInfos := filterSmallDisks(finalDiskInfos)
-	dedupedDiskInfos := deduplicatePhysicalDisks(filteredDiskInfos)
+	dedupedDiskInfos := deduplicatePhysicalDisks(filteredDiskInfos, currentDiskInfo)
 	sort.Slice(dedupedDiskInfos, func(i, j int) bool {
 		return dedupedDiskInfos[i].TotalBytes > dedupedDiskInfos[j].TotalBytes
 	})
@@ -85,7 +85,7 @@ func filterSmallDisks(diskInfos []DiskSingelInfo) []DiskSingelInfo {
 	return filtered
 }
 
-func deduplicatePhysicalDisks(diskInfos []DiskSingelInfo) []DiskSingelInfo {
+func deduplicatePhysicalDisks(diskInfos []DiskSingelInfo, currentDiskInfo *DiskSingelInfo) []DiskSingelInfo {
 	if len(diskInfos) <= 1 {
 		return diskInfos
 	}
@@ -95,18 +95,31 @@ func deduplicatePhysicalDisks(diskInfos []DiskSingelInfo) []DiskSingelInfo {
 		physicalDisks[physicalDisk] = append(physicalDisks[physicalDisk], info)
 	}
 	var result []DiskSingelInfo
-	for _, disks := range physicalDisks {
-		if len(disks) == 1 {
-			result = append(result, disks[0])
-		} else {
-			largest := disks[0]
-			for _, disk := range disks[1:] {
-				if disk.TotalBytes > largest.TotalBytes {
-					largest = disk
-				}
+	for physicalDisk, disks := range physicalDisks {
+		var largest DiskSingelInfo = disks[0]
+		for _, disk := range disks[1:] {
+			if disk.TotalBytes > largest.TotalBytes {
+				largest = disk
 			}
-			result = append(result, largest)
 		}
+		if currentDiskInfo != nil {
+			currentPhysical := getPhysicalDiskName(currentDiskInfo.BootPath)
+			if physicalDisk == currentPhysical {
+				alreadyAdded := false
+				for _, d := range disks {
+					if d.BootPath == currentDiskInfo.BootPath && d.MountPath == currentDiskInfo.MountPath {
+						alreadyAdded = true
+						result = append(result, d)
+						break
+					}
+				}
+				if !alreadyAdded {
+					result = append(result, *currentDiskInfo)
+				}
+				continue
+			}
+		}
+		result = append(result, largest)
 	}
 	return result
 }
@@ -354,26 +367,27 @@ func getFallbackDiskInfo() *DiskSingelInfo {
 }
 
 func consolidateDiskInfos(diskInfos []DiskSingelInfo, currentDiskInfo *DiskSingelInfo) []DiskSingelInfo {
-	diskMap := make(map[string]DiskSingelInfo)
-	for _, info := range diskInfos {
-		physicalName := getPhysicalDiskName(info.BootPath)
-		existing, ok := diskMap[physicalName]
-		if !ok || info.TotalBytes > existing.TotalBytes {
-			diskMap[physicalName] = info
+	var finalDiskInfos []DiskSingelInfo
+	if len(diskInfos) == 0 {
+		if currentDiskInfo != nil {
+			finalDiskInfos = append(finalDiskInfos, *currentDiskInfo)
+		}
+	} else {
+		finalDiskInfos = diskInfos
+		if currentDiskInfo != nil {
+			currentInList := false
+			for _, info := range diskInfos {
+				if info.BootPath == currentDiskInfo.BootPath {
+					currentInList = true
+					break
+				}
+			}
+			if !currentInList {
+				finalDiskInfos = append(finalDiskInfos, *currentDiskInfo)
+			}
 		}
 	}
-	if currentDiskInfo != nil {
-		physName := getPhysicalDiskName(currentDiskInfo.BootPath)
-		_, exists := diskMap[physName]
-		if !exists {
-			diskMap[physName] = *currentDiskInfo
-		}
-	}
-	var result []DiskSingelInfo
-	for _, v := range diskMap {
-		result = append(result, v)
-	}
-	return result
+	return finalDiskInfos
 }
 
 func createDiskInfo(totalBytes, usedBytes uint64, bootPath, mountPath string) DiskSingelInfo {

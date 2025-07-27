@@ -7,7 +7,6 @@ import (
 
 	"github.com/oneclickvirt/basics/model"
 	"github.com/oneclickvirt/basics/system/utils"
-	precheckUtils "github.com/oneclickvirt/basics/utils"
 	. "github.com/oneclickvirt/defaultset"
 )
 

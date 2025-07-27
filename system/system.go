@@ -120,7 +120,7 @@ func CheckSystemInfo(language string) string {
 		res += " Current Time Zone   : " + ret.TimeZone + "\n"
 		res += " Load                : " + ret.Load + "\n"
 		res += " VM Type             : " + ret.VmType + "\n"
-		if precheckUtils.StackType != "" && precheckUtils.StackType != "None" {
+		if ret.NatType != "" {
 			res += " NAT Type            : " + ret.NatType + "\n"
 		}
 		if ret.TcpAccelerationMethod != "" {
@@ -187,7 +187,7 @@ func CheckSystemInfo(language string) string {
 		res += " 时区                : " + ret.TimeZone + "\n"
 		res += " 负载                : " + ret.Load + "\n"
 		res += " 虚拟化架构          : " + ret.VmType + "\n"
-		if precheckUtils.StackType != "" && precheckUtils.StackType != "None" {
+		if ret.NatType != "" {
 			res += " NAT类型             : " + ret.NatType + "\n"
 		}
 		if ret.TcpAccelerationMethod != "" {

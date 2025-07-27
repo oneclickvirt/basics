@@ -52,7 +52,7 @@ func main() {
 	}
 	res := system.CheckSystemInfo(language)
 	fmt.Println("--------------------------------------------------")
-	fmt.Printf(strings.ReplaceAll(res+ipInfo, "\n\n", "\n"))
+	fmt.Print(strings.ReplaceAll(res+ipInfo, "\n\n", "\n"))
 	fmt.Println("--------------------------------------------------")
 	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
 		fmt.Println("Press Enter to exit...")

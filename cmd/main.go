@@ -44,11 +44,11 @@ func main() {
 	preCheck := utils.CheckPublicAccess(3 * time.Second)
 	var ipInfo string
 	if preCheck.Connected && preCheck.StackType == "DualStack" {
-		ipInfo, _, _ = network.NetworkCheck("both", false, language)
+		_, _, ipInfo, _, _ = network.NetworkCheck("both", false, language)
 	} else if preCheck.Connected && preCheck.StackType == "IPv4" {
-		ipInfo, _, _ = network.NetworkCheck("ipv4", false, language)
+		_, _, ipInfo, _, _ = network.NetworkCheck("ipv4", false, language)
 	} else if preCheck.Connected && preCheck.StackType == "IPv6" {
-		ipInfo, _, _ = network.NetworkCheck("ipv6", false, language)
+		_, _, ipInfo, _, _ = network.NetworkCheck("ipv6", false, language)
 	}
 	res := system.CheckSystemInfo(language)
 	fmt.Println("--------------------------------------------------")

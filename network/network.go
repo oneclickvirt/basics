@@ -112,12 +112,12 @@ func processPrintIPInfo(ipVersion, language string, ipResult *model.IpInfo) stri
 // NetworkCheck 查询网络信息
 // checkType 可选 both ipv4 ipv6
 // language 暂时仅支持 en 或 zh
-func NetworkCheck(checkType string, enableSecurityCheck bool, language string) (string, string, error) {
+func NetworkCheck(checkType string, enableSecurityCheck bool, language string) (string, string, string, string, error) {
 	if model.EnableLoger {
 		InitLogger()
 		defer Logger.Sync()
 	}
-	var ipInfo string
+	var ipv4, ipv6, ipInfo string
 	if checkType == "both" {
 		ipInfoV4Result, ipInfoV6Result, err := baseinfo.RunIpCheck("both")
 		if err != nil && model.EnableLoger {
@@ -125,11 +125,13 @@ func NetworkCheck(checkType string, enableSecurityCheck bool, language string) (
 		}
 		if ipInfoV4Result != nil {
 			ipInfo += processPrintIPInfo("ipv4", language, ipInfoV4Result)
+			ipv4 = ipInfoV4Result.Ip
 		}
 		if ipInfoV6Result != nil {
 			ipInfo += processPrintIPInfo("ipv6", language, ipInfoV6Result)
+			ipv6 = ipInfoV4Result.Ip
 		}
-		return ipInfo, "", nil
+		return ipv4, ipv6, ipInfo, "", nil
 	} else if checkType == "ipv4" {
 		ipInfoV4Result, _, err := baseinfo.RunIpCheck("ipv4")
 		if err != nil && model.EnableLoger {
@@ -137,8 +139,9 @@ func NetworkCheck(checkType string, enableSecurityCheck bool, language string) (
 		}
 		if ipInfoV4Result != nil {
 			ipInfo += processPrintIPInfo("ipv4", language, ipInfoV4Result)
+			ipv4 = ipInfoV4Result.Ip
 		}
-		return ipInfo, "", nil
+		return ipv4, ipv6, ipInfo, "", nil
 	} else if checkType == "ipv6" {
 		ipInfoV6Result, _, err := baseinfo.RunIpCheck("ipv6")
 		if err != nil && model.EnableLoger {
@@ -146,8 +149,9 @@ func NetworkCheck(checkType string, enableSecurityCheck bool, language string) (
 		}
 		if ipInfoV6Result != nil {
 			ipInfo += processPrintIPInfo("ipv6", language, ipInfoV6Result)
+			ipv6 = ipInfoV6Result.Ip
 		}
-		return ipInfo, "", nil
+		return ipv4, ipv6, ipInfo, "", nil
 	}
-	return "", "", fmt.Errorf("wrong in NetworkCheck")
+	return "", "", "", "", fmt.Errorf("wrong in NetworkCheck")
 }

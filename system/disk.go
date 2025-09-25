@@ -291,6 +291,7 @@ func getLinuxDisks() ([]DiskSingelInfo, *DiskSingelInfo, string) {
 	var currentDiskInfo *DiskSingelInfo
 	var bootPath string
 	devices := make(map[string]string)
+	seenMountPoints := make(map[string]bool)
 	diskList, _ := disk.Partitions(false)
 	for _, d := range diskList {
 		fsType := strings.ToLower(d.Fstype)
@@ -300,7 +301,11 @@ func getLinuxDisks() ([]DiskSingelInfo, *DiskSingelInfo, string) {
 		if shouldExcludeMountPoint(d.Mountpoint) {
 			continue
 		}
+		if seenMountPoints[d.Mountpoint] {
+			continue
+		}
 		if devices[d.Device] == "" && isListContainsStr(expectDiskFsTypes, fsType) {
+			seenMountPoints[d.Mountpoint] = true
 			devices[d.Device] = d.Mountpoint
 		}
 	}

@@ -1,6 +1,6 @@
 package model
 
-const BasicsVersion = "v0.0.15"
+const BasicsVersion = "v0.0.16"
 
 var EnableLoger bool
 
@@ -96,11 +96,15 @@ var TranslationMap = map[string]string{
 }
 
 type CpuInfo struct {
-	CpuModel string
-	CpuCores string
-	CpuCache string
-	CpuAesNi string
-	CpuVAH   string
+	CpuModel          string
+	CpuCores          string
+	CpuPhysicalCores  int // 物理核心数
+	CpuLogicalCores   int // 逻辑核心数（线程数）
+	CpuThreadsPerCore int // 每核心线程数
+	CpuSockets        int // CPU插槽数
+	CpuCache          string
+	CpuAesNi          string
+	CpuVAH            string
 }
 
 type MemoryInfo struct {
@@ -111,11 +115,11 @@ type MemoryInfo struct {
 }
 
 type DiskInfo struct {
-	DiskUsage  []string
-	DiskTotal  []string
+	DiskUsage    []string
+	DiskTotal    []string
 	DiskRealPath []string
-	Percentage []string
-	BootPath   string
+	Percentage   []string
+	BootPath     string
 }
 
 type SystemInfo struct {

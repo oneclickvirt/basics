@@ -212,10 +212,316 @@ func updateSystemLoad(ret *model.SystemInfo) {
 	}
 }
 
+func getCpuCoreDetails(ret *model.SystemInfo) {
+	// 默认值：使用runtime.NumCPU()作为逻辑核心数
+	ret.CpuLogicalCores = runtime.NumCPU()
+	ret.CpuPhysicalCores = 0 // 初始化为0，如果获取失败则保持为0
+	ret.CpuThreadsPerCore = 1
+	ret.CpuSockets = 1
+
+	// 首先尝试使用gopsutil获取核心信息（跨平台支持）
+	if !getCpuCoreDetailsFromGopsutil(ret) {
+		// 如果gopsutil失败，根据不同操作系统使用特定方法
+		switch runtime.GOOS {
+		case "linux":
+			getCpuCoreDetailsLinux(ret)
+		case "windows":
+			getCpuCoreDetailsWindows(ret)
+		case "darwin":
+			getCpuCoreDetailsDarwin(ret)
+		}
+	}
+
+	// 最终降级处理：如果没有成功获取物理核心数，设置为逻辑核心数
+	if ret.CpuPhysicalCores <= 0 {
+		ret.CpuPhysicalCores = ret.CpuLogicalCores
+		ret.CpuThreadsPerCore = 1
+	}
+}
+
+func getCpuCoreDetailsFromGopsutil(ret *model.SystemInfo) bool {
+	// 获取逻辑核心数
+	logicalCores, err := cpu.Counts(true)
+	if err == nil && logicalCores > 0 {
+		ret.CpuLogicalCores = logicalCores
+	} else {
+		return false
+	}
+
+	// 获取物理核心数
+	physicalCores, err := cpu.Counts(false)
+	if err == nil && physicalCores > 0 {
+		ret.CpuPhysicalCores = physicalCores
+	} else {
+		return false
+	}
+
+	// 计算每核心线程数
+	if ret.CpuPhysicalCores > 0 && ret.CpuLogicalCores >= ret.CpuPhysicalCores {
+		ret.CpuThreadsPerCore = ret.CpuLogicalCores / ret.CpuPhysicalCores
+	}
+
+	// 尝试从cpu.Info()获取socket信息
+	cpuInfo, err := cpu.Info()
+	if err == nil && len(cpuInfo) > 0 {
+		physicalIDs := make(map[string]bool)
+		for _, info := range cpuInfo {
+			if info.PhysicalID != "" {
+				physicalIDs[info.PhysicalID] = true
+			}
+		}
+		if len(physicalIDs) > 0 {
+			ret.CpuSockets = len(physicalIDs)
+		}
+	}
+
+	return ret.CpuPhysicalCores > 0
+}
+
+func getCpuCoreDetailsLinux(ret *model.SystemInfo) {
+	var foundDetails bool
+	var coresPerSocket int
+
+	// 尝试从lscpu获取信息
+	cmd := exec.Command("lscpu", "-B")
+	output, err := cmd.Output()
+	if err == nil {
+		lines := strings.Split(string(output), "\n")
+		for _, line := range lines {
+			fields := strings.Split(line, ":")
+			if len(fields) < 2 {
+				continue
+			}
+			key := strings.TrimSpace(fields[0])
+			value := strings.TrimSpace(fields[1])
+
+			switch key {
+			case "CPU(s)":
+				if v, err := strconv.Atoi(value); err == nil && v > 0 {
+					ret.CpuLogicalCores = v
+					foundDetails = true
+				}
+			case "Thread(s) per core":
+				if v, err := strconv.Atoi(value); err == nil && v > 0 {
+					ret.CpuThreadsPerCore = v
+					foundDetails = true
+				}
+			case "Core(s) per socket":
+				if v, err := strconv.Atoi(value); err == nil && v > 0 {
+					coresPerSocket = v
+					foundDetails = true
+				}
+			case "Socket(s)":
+				if v, err := strconv.Atoi(value); err == nil && v > 0 {
+					ret.CpuSockets = v
+					foundDetails = true
+				}
+			}
+		}
+
+		// 计算总物理核心数 = 每插槽核心数 × 插槽数
+		if coresPerSocket > 0 && ret.CpuSockets > 0 {
+			ret.CpuPhysicalCores = coresPerSocket * ret.CpuSockets
+		}
+	}
+
+	// 如果lscpu没有获取到完整信息，尝试从/proc/cpuinfo获取
+	if !foundDetails || ret.CpuPhysicalCores <= 0 {
+		getCpuCoreDetailsFromProcCpuinfo(ret)
+	}
+}
+
+func getCpuCoreDetailsFromProcCpuinfo(ret *model.SystemInfo) {
+	content, err := os.ReadFile("/proc/cpuinfo")
+	if err != nil {
+		return
+	}
+
+	physicalIDs := make(map[string]bool)
+	var siblings, cpuCores int
+	var foundInfo bool
+
+	lines := strings.Split(string(content), "\n")
+	for _, line := range lines {
+		fields := strings.Split(line, ":")
+		if len(fields) < 2 {
+			continue
+		}
+		key := strings.TrimSpace(fields[0])
+		value := strings.TrimSpace(fields[1])
+
+		switch key {
+		case "physical id":
+			physicalIDs[value] = true
+			foundInfo = true
+		case "siblings":
+			if v, err := strconv.Atoi(value); err == nil && siblings == 0 {
+				siblings = v
+				foundInfo = true
+			}
+		case "cpu cores":
+			if v, err := strconv.Atoi(value); err == nil && cpuCores == 0 {
+				cpuCores = v
+				foundInfo = true
+			}
+		}
+	}
+
+	// 只有在成功获取到信息时才更新
+	if foundInfo {
+		if len(physicalIDs) > 0 {
+			ret.CpuSockets = len(physicalIDs)
+		}
+		if cpuCores > 0 && len(physicalIDs) > 0 {
+			ret.CpuPhysicalCores = cpuCores * len(physicalIDs)
+		} else if cpuCores > 0 {
+			// 如果没有physical id信息，至少使用cpu cores
+			ret.CpuPhysicalCores = cpuCores
+		}
+		if siblings > 0 && cpuCores > 0 && siblings >= cpuCores {
+			ret.CpuThreadsPerCore = siblings / cpuCores
+		}
+	}
+}
+
+func getCpuCoreDetailsWindows(ret *model.SystemInfo) {
+	// Windows下尝试使用wmic获取信息
+	cmd := exec.Command("wmic", "cpu", "get", "NumberOfCores,NumberOfLogicalProcessors", "/format:list")
+	output, err := cmd.Output()
+	if err != nil {
+		return
+	}
+
+	lines := strings.Split(string(output), "\n")
+	var totalCores, totalLogical int
+	for _, line := range lines {
+		if strings.Contains(line, "NumberOfCores=") {
+			parts := strings.Split(line, "=")
+			if len(parts) == 2 {
+				value := strings.TrimSpace(parts[1])
+				if v, err := strconv.Atoi(value); err == nil && v > 0 {
+					totalCores += v
+				}
+			}
+		} else if strings.Contains(line, "NumberOfLogicalProcessors=") {
+			parts := strings.Split(line, "=")
+			if len(parts) == 2 {
+				value := strings.TrimSpace(parts[1])
+				if v, err := strconv.Atoi(value); err == nil && v > 0 {
+					totalLogical += v
+				}
+			}
+		}
+	}
+
+	// 只有在成功获取到信息时才更新
+	if totalCores > 0 {
+		ret.CpuPhysicalCores = totalCores
+	}
+	if totalLogical > 0 {
+		ret.CpuLogicalCores = totalLogical
+	}
+	if totalCores > 0 && totalLogical > 0 && totalLogical >= totalCores {
+		ret.CpuThreadsPerCore = totalLogical / totalCores
+	}
+}
+
+func getCpuCoreDetailsDarwin(ret *model.SystemInfo) {
+	// macOS下尝试使用sysctl获取信息
+	path, exists := utils.GetPATH("sysctl")
+	if !exists {
+		return
+	}
+
+	// 获取物理核心数
+	if out, err := exec.Command(path, "-n", "hw.physicalcpu").Output(); err == nil {
+		value := strings.TrimSpace(string(out))
+		if v, err := strconv.Atoi(value); err == nil && v > 0 {
+			ret.CpuPhysicalCores = v
+		}
+	}
+
+	// 获取逻辑核心数
+	if out, err := exec.Command(path, "-n", "hw.logicalcpu").Output(); err == nil {
+		value := strings.TrimSpace(string(out))
+		if v, err := strconv.Atoi(value); err == nil && v > 0 {
+			ret.CpuLogicalCores = v
+		}
+	}
+
+	// 计算每核心线程数
+	if ret.CpuPhysicalCores > 0 && ret.CpuLogicalCores > 0 && ret.CpuLogicalCores >= ret.CpuPhysicalCores {
+		ret.CpuThreadsPerCore = ret.CpuLogicalCores / ret.CpuPhysicalCores
+	}
+}
+
+func formatCpuCores(ret *model.SystemInfo, cpuType string, lang string) string {
+	if ret.CpuLogicalCores == 0 {
+		return ""
+	}
+
+	// 检查是否成功获取了详细信息（物理核心数与逻辑核心数不同，或者有多线程）
+	hasDetailedInfo := (ret.CpuPhysicalCores > 0 &&
+		(ret.CpuPhysicalCores != ret.CpuLogicalCores || ret.CpuThreadsPerCore > 1))
+
+	// 降级处理：如果没有获取到详细信息，使用简单格式
+	if !hasDetailedInfo {
+		if lang == "zh" || lang == "cn" || lang == "chinese" {
+			return fmt.Sprintf("%d %s CPU(s)", ret.CpuLogicalCores, cpuType)
+		} else {
+			return fmt.Sprintf("%d %s CPU(s)", ret.CpuLogicalCores, cpuType)
+		}
+	}
+
+	// 检测是否为混合架构（简单判断：如果线程数不是整数倍）
+	isHybrid := (ret.CpuLogicalCores != ret.CpuPhysicalCores*ret.CpuThreadsPerCore)
+
+	if lang == "zh" || lang == "cn" || lang == "chinese" {
+		if isHybrid {
+			// 混合架构，可能有大小核
+			return fmt.Sprintf("%d 插槽, %d 物理核心, %d 逻辑线程 (混合架构)",
+				ret.CpuSockets, ret.CpuPhysicalCores, ret.CpuLogicalCores)
+		} else if ret.CpuThreadsPerCore > 1 {
+			// 有超线程
+			return fmt.Sprintf("%d 插槽, %d 物理核心, %d 逻辑线程",
+				ret.CpuSockets, ret.CpuPhysicalCores, ret.CpuLogicalCores)
+		} else {
+			// 无超线程
+			return fmt.Sprintf("%d 插槽, %d 物理核心", ret.CpuSockets, ret.CpuPhysicalCores)
+		}
+	} else {
+		if isHybrid {
+			// Hybrid architecture
+			return fmt.Sprintf("%d Socket(s), %d Physical Core(s), %d Logical Thread(s) (Hybrid)",
+				ret.CpuSockets, ret.CpuPhysicalCores, ret.CpuLogicalCores)
+		} else if ret.CpuThreadsPerCore > 1 {
+			// With hyper-threading
+			return fmt.Sprintf("%d Socket(s), %d Physical Core(s), %d Logical Thread(s)",
+				ret.CpuSockets, ret.CpuPhysicalCores, ret.CpuLogicalCores)
+		} else {
+			// No hyper-threading
+			return fmt.Sprintf("%d Socket(s), %d Physical Core(s)", ret.CpuSockets, ret.CpuPhysicalCores)
+		}
+	}
+}
+
 func getCpuInfo(ret *model.SystemInfo, cpuType string) (*model.SystemInfo, error) {
-	if runtime.NumCPU() != 0 {
+	// 获取详细的核心信息
+	getCpuCoreDetails(ret)
+
+	// 根据系统语言格式化输出
+	lang := os.Getenv("LANG")
+	if strings.Contains(strings.ToLower(lang), "zh") {
+		ret.CpuCores = formatCpuCores(ret, cpuType, "zh")
+	} else {
+		ret.CpuCores = formatCpuCores(ret, cpuType, "en")
+	}
+
+	// 如果格式化失败，使用默认格式
+	if ret.CpuCores == "" && runtime.NumCPU() != 0 {
 		ret.CpuCores = fmt.Sprintf("%d %s CPU(s)", runtime.NumCPU(), cpuType)
 	}
+
 	switch runtime.GOOS {
 	case "windows":
 		return getWindowsCpuInfo(ret)

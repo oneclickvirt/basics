@@ -65,7 +65,7 @@ rm -rf /usr/bin/basics
 ## 在Golang中使用
 
 ```
-go get github.com/oneclickvirt/basics@v0.0.15-20250812130523
+go get github.com/oneclickvirt/basics@v0.0.16-20251030093657
 ```
 
 ## 结果展示

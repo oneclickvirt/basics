@@ -24,6 +24,8 @@ type SecurityScore struct {
 	CommunityVoteHarmless  *int
 	CommunityVoteMalicious *int
 	CloudFlareRisk         *int // 还没有加入
+	HumanPercent           *int
+    BotPercent             *int
 	ThreatScore            *int
 	FraudScore             *int
 	AbuseScore             *int
@@ -31,8 +33,6 @@ type SecurityScore struct {
 	MaliciousRecords       *int
 	SuspiciousRecords      *int
 	NoRecords              *int
-	HumanScore             *int
-    BotScore               *int
 }
 
 type SecurityInfo struct {
@@ -81,10 +81,12 @@ var TranslationMap = map[string]string{
 	"ASNAbuseScore":          "ASN滥用得分(越低越好)",
 	"CompannyAbuseScore":     "公司滥用得分(越低越好)",
 	"ThreatLevel":            "威胁级别",
-	"HumanScore":             "真人占比(越高越好)",
-    "BotScore":               "机器占比(越低越好)",
+	"HumanPercent":           "流量占比",
 	"UsageType":              "使用类型",
 	"CompanyType":            "公司类型",
+	"BrowserType":            "浏览器类型",
+	"DeviceType":             "设备类型",
+	"OSType":                 "操作系统类型",
 	"IsCloudProvider":        "是否云提供商",
 	"IsDatacenter":           "是否数据中心",
 	"IsMobile":               "是否移动设备",

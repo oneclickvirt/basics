@@ -20,27 +20,35 @@ import (
 // additionalHeader 参数表示传入的额外的请求头信息(用于传输api的key)。
 // 返回一个解析 json 得到的 map 和 一个可能发生的错误 。
 func FetchJsonFromURL(url, netType string, enableHeader bool, additionalHeader string) (map[string]interface{}, error) {
-	// 检查网络类型是否有效
 	if netType != "tcp4" && netType != "tcp6" {
 		return nil, fmt.Errorf("Invalid netType: %s. Expected 'tcp4' or 'tcp6'.", netType)
 	}
-	// 创建 HTTP 客户端
 	client := req.C()
-	client.SetTimeout(7 * time.Second).
+	client.SetTimeout(12 * time.Second).
 		SetDial(func(ctx context.Context, network, addr string) (net.Conn, error) {
-			return (&net.Dialer{}).DialContext(ctx, netType, addr)
+			return (&net.Dialer{
+				Timeout:   6 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).DialContext(ctx, netType, addr)
 		}).
-		SetTLSHandshakeTimeout(2 * time.Second).
-		SetResponseHeaderTimeout(2 * time.Second).
+		SetTLSHandshakeTimeout(5 * time.Second).
+		SetResponseHeaderTimeout(10 * time.Second).
 		SetExpectContinueTimeout(2 * time.Second)
+	// client.SetTLSClientConfig(&tls.Config{
+	// 	NextProtos: []string{"http/1.1"},
+	// })
 	client.R().
-		SetRetryCount(2).
-		SetRetryBackoffInterval(1*time.Second, 2*time.Second).
-		SetRetryFixedInterval(1 * time.Second)
-	// 如果启用请求头，则设置请求头信息
+		SetRetryCount(3).
+		SetRetryBackoffInterval(2*time.Second, 5*time.Second).
+		SetRetryHook(func(resp *req.Response, err error) {
+			if err != nil && (strings.Contains(err.Error(), "timeout") || 
+				strings.Contains(err.Error(), "http2")) {
+			}
+		})
 	if enableHeader {
 		client.Headers = make(http.Header)
 		client.ImpersonateChrome()
+		client.Headers.Set("Connection", "close")
 		if additionalHeader != "" {
 			tempList := strings.Split(additionalHeader, ":")
 			if len(tempList) == 2 {
@@ -50,22 +58,18 @@ func FetchJsonFromURL(url, netType string, enableHeader bool, additionalHeader s
 			}
 		}
 	}
-	// 执行请求
 	resp, err := client.R().Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("Error fetching %s info: %v", url, err)
 	}
-	// 检查响应状态码
 	if !resp.IsSuccessState() {
 		return nil, fmt.Errorf("Error fetching %s info: status code %d", url, resp.StatusCode)
 	}
-	// 解析 JSON 响应体
 	var data map[string]interface{}
 	err = json.Unmarshal(resp.Bytes(), &data)
 	if err != nil {
 		return nil, fmt.Errorf("Error decoding %s info: %v", url, err)
 	}
-	// 返回解析后的数据和 nil 错误
 	return data, nil
 }
 

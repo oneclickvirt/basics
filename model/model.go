@@ -31,6 +31,15 @@ type SecurityScore struct {
 	MaliciousRecords       *int
 	SuspiciousRecords      *int
 	NoRecords              *int
+	HumanScore             *int
+    BotScore               *int
+    MainstreamBrowser      *int
+    OtherBrowser           *int
+    DesktopDevice          *int
+    MobileDevice           *int
+    OtherDevice            *int
+    MainstreamOS           *int
+    OtherOS                *int
 }
 
 type SecurityInfo struct {
@@ -76,6 +85,15 @@ var TranslationMap = map[string]string{
 	"ASNAbuseScore":          "ASN滥用得分(越低越好)",
 	"CompannyAbuseScore":     "公司滥用得分(越低越好)",
 	"ThreatLevel":            "威胁级别",
+	"HumanScore":             "真人占比(越高越好)",
+    "BotScore":               "机器占比(越低越好)",
+    "MainstreamBrowser":      "主流浏览器",
+    "OtherBrowser":           "其他浏览器",
+    "DesktopDevice":          "桌面设备",
+    "MobileDevice":           "移动设备",
+    "OtherDevice":            "其他设备",
+    "MainstreamOS":       	  "主流操作系统",
+    "OtherOS":                "其他操作系统",
 	"UsageType":              "使用类型",
 	"CompanyType":            "公司类型",
 	"IsCloudProvider":        "是否云提供商",

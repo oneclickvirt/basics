@@ -124,21 +124,21 @@ func getHostInfo() (string, string, string, string, string, string, string, stri
 			}
 			if VmType == "" {
 				_, err := os.Stat("/.dockerenv")
-				if os.IsExist(err) {
+				if err == nil {
 					VmType = "Docker"
 				}
-				cgroupFile, err := os.Open("/proc/1/cgroup")
-				defer cgroupFile.Close()
-				if err == nil {
+				cgroupFile, cgroupErr := os.Open("/proc/1/cgroup")
+				if cgroupErr == nil {
 					scanner := bufio.NewScanner(cgroupFile)
 					for scanner.Scan() {
 						if strings.Contains(scanner.Text(), "docker") {
 							VmType = "Docker"
 						}
 					}
+					cgroupFile.Close()
 				}
 				_, err = os.Stat("/dev/lxss")
-				if os.IsExist(err) {
+				if err == nil {
 					VmType = "Windows Subsystem for Linux"
 				}
 				path, exit = utils.GetPATH("dmidecode")

@@ -174,21 +174,46 @@ func getCpuInfoFromLscpu(ret *model.SystemInfo) {
 }
 
 func updateCpuCache(ret *model.SystemInfo, L1dcache, L1icache, L2cache, L3cache string) {
-	if L1dcache == "" || L1icache == "" || L2cache == "" || L3cache == "" || strings.Contains(ret.CpuCache, "/") {
+	if strings.Contains(ret.CpuCache, "/") {
+		return
+	}
+	// If we have at least L1d and L2 cache info, build the cache string
+	if L1dcache == "" || L2cache == "" {
 		return
 	}
 	bytes1, err1 := strconv.ParseInt(L1dcache, 10, 64)
-	bytes2, err2 := strconv.ParseInt(L1icache, 10, 64)
-	bytes4, err4 := strconv.ParseInt(L2cache, 10, 64)
-	bytes5, err5 := strconv.ParseInt(L3cache, 10, 64)
-	if err1 != nil || err2 != nil || err4 != nil || err5 != nil {
+	if err1 != nil {
 		return
 	}
-	L1unit, L1size := convertBytes(bytes1 + bytes2)
-	L2unit, L2size := convertBytes(bytes4)
-	L3unit, L3size := convertBytes(bytes5)
-	ret.CpuCache = fmt.Sprintf("L1: %d %s / L2: %d %s / L3: %d %s",
-		L1size, L1unit, L2size, L2unit, L3size, L3unit)
+	L2unit, L2size := convertBytes(0)
+	bytes4, err4 := strconv.ParseInt(L2cache, 10, 64)
+	if err4 != nil {
+		return
+	}
+	L2unit, L2size = convertBytes(bytes4)
+	// Build L1 with both d and i caches if available
+	var L1unit string
+	var L1size int64
+	if L1icache != "" {
+		bytes2, err2 := strconv.ParseInt(L1icache, 10, 64)
+		if err2 == nil {
+			L1unit, L1size = convertBytes(bytes1 + bytes2)
+		} else {
+			L1unit, L1size = convertBytes(bytes1)
+		}
+	} else {
+		L1unit, L1size = convertBytes(bytes1)
+	}
+	if L3cache != "" {
+		bytes5, err5 := strconv.ParseInt(L3cache, 10, 64)
+		if err5 == nil {
+			L3unit, L3size := convertBytes(bytes5)
+			ret.CpuCache = fmt.Sprintf("L1: %d %s / L2: %d %s / L3: %d %s",
+				L1size, L1unit, L2size, L2unit, L3size, L3unit)
+			return
+		}
+	}
+	ret.CpuCache = fmt.Sprintf("L1: %d %s / L2: %d %s", L1size, L1unit, L2size, L2unit)
 }
 
 func updateSystemLoad(ret *model.SystemInfo) {

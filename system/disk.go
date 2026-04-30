@@ -327,35 +327,32 @@ func getLinuxDisks() ([]DiskSingelInfo, *DiskSingelInfo, string) {
 }
 
 func getOverlayDisk() *DiskSingelInfo {
-	cmd := exec.Command("df", "-x", "tmpfs", "/")
+	cmd := exec.Command("df", "-P", "-k", "-x", "tmpfs", "/")
 	output, err := cmd.Output()
 	if err != nil {
-		return nil
-	}
-	lines := strings.Split(string(output), "\n")
-	if len(lines) < 2 {
-		return nil
-	}
-	fields := strings.Split(strings.TrimSpace(lines[1]), " ")
-	var nonEmptyFields []string
-	for _, field := range fields {
-		if field != "" {
-			nonEmptyFields = append(nonEmptyFields, field)
+		// fallback without -x tmpfs
+		cmd = exec.Command("df", "-P", "-k", "/")
+		output, err = cmd.Output()
+		if err != nil {
+			return nil
 		}
 	}
-	if len(nonEmptyFields) > 0 && strings.Contains(nonEmptyFields[0], "overlay") && len(nonEmptyFields) >= 5 {
-		tpDiskTotal, err1 := strconv.Atoi(nonEmptyFields[1])
-		tpDiskUsage, err2 := strconv.Atoi(nonEmptyFields[2])
-		if err1 == nil && err2 == nil {
-			totalBytes := uint64(tpDiskTotal) * 1024
-			usedBytes := uint64(tpDiskUsage) * 1024
-			percentageStr := nonEmptyFields[4]
-			if percentageStr != "" && strings.Contains(percentageStr, "%") {
-				percentageStr = strings.ReplaceAll(percentageStr, "%", "%%")
+	for _, line := range strings.Split(string(output), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) == 6 && fields[5] == "/" && strings.Contains(fields[0], "overlay") {
+			tpDiskTotal, err1 := strconv.ParseUint(fields[1], 10, 64)
+			tpDiskUsage, err2 := strconv.ParseUint(fields[2], 10, 64)
+			if err1 == nil && err2 == nil {
+				totalBytes := tpDiskTotal * 1024
+				usedBytes := tpDiskUsage * 1024
+				percentageStr := fields[4]
+				if percentageStr != "" && strings.Contains(percentageStr, "%") {
+					percentageStr = strings.ReplaceAll(percentageStr, "%", "%%")
+				}
+				diskInfo := createDiskInfo(totalBytes, usedBytes, fields[0], "/")
+				diskInfo.PercentageStr = percentageStr
+				return &diskInfo
 			}
-			diskInfo := createDiskInfo(totalBytes, usedBytes, nonEmptyFields[0], "/")
-			diskInfo.PercentageStr = percentageStr
-			return &diskInfo
 		}
 	}
 	return nil
@@ -505,33 +502,19 @@ func getDiskTotalAndUsed() (total uint64, used uint64) {
 		}
 	}
 	if total == 0 && used == 0 {
-		var cmd *exec.Cmd
-		if runtime.GOOS == "freebsd" || runtime.GOOS == "openbsd" || runtime.GOOS == "netbsd" {
-			cmd = exec.Command("df", "-k", "/")
-		} else {
-			cmd = exec.Command("df")
-		}
-		out, err := cmd.CombinedOutput()
+		// 使用 df -P -k 保证POSIX格式输出，避免设备名过长时换行导致列解析错误
+		out, err := exec.Command("df", "-P", "-k", "/").CombinedOutput()
 		if err == nil {
-			s := strings.Split(string(out), "\n")
-			for _, c := range s {
+			for _, c := range strings.Split(string(out), "\n") {
 				info := strings.Fields(c)
-				if len(info) == 6 {
-					if info[5] == "/" {
-						total, _ = strconv.ParseUint(info[1], 0, 64)
-						used, _ = strconv.ParseUint(info[2], 0, 64)
-						total = total * 1024
-						used = used * 1024
-						break
+				if len(info) == 6 && info[5] == "/" {
+					if t, err2 := strconv.ParseUint(info[1], 10, 64); err2 == nil {
+						total = t * 1024
 					}
-				} else if len(info) == 5 && (runtime.GOOS == "freebsd" || runtime.GOOS == "openbsd" || runtime.GOOS == "netbsd") {
-					if info[4] == "/" {
-						total, _ = strconv.ParseUint(info[1], 0, 64)
-						used, _ = strconv.ParseUint(info[2], 0, 64)
-						total = total * 1024
-						used = used * 1024
-						break
+					if u, err2 := strconv.ParseUint(info[2], 10, 64); err2 == nil {
+						used = u * 1024
 					}
+					break
 				}
 			}
 		}

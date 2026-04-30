@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"runtime"
 	"strconv"
+	"sync"
 
 	"github.com/oneclickvirt/basics/model"
 	"github.com/oneclickvirt/basics/system/utils"
@@ -21,38 +22,92 @@ func GetSystemInfo() *model.SystemInfo {
 	if runtime.GOOS == "darwin" {
 		getMacOSInfo()
 	}
-	// 系统信息查询
+	// 系统信息查询（必须先完成，后续 CPU/GPU 依赖 cpuType）
 	cpuType, ret.Uptime, ret.Platform, ret.Kernel, ret.Arch, ret.VmType, ret.NatType, ret.TimeZone, err = getHostInfo()
 	if err != nil && model.EnableLoger {
 		Logger.Info(err.Error())
 	}
-	// CPU信息查询
-	ret, err = getCpuInfo(ret, cpuType)
-	if err != nil && model.EnableLoger {
-		Logger.Info(err.Error())
+
+	// CPU、GPU 需顺序执行（共享 ret 指针，内部直接写字段）
+	// 先执行 CPU，再执行 GPU，避免数据竞争
+	var cpuErr error
+	ret, cpuErr = getCpuInfo(ret, cpuType)
+	if cpuErr != nil && model.EnableLoger {
+		Logger.Info(cpuErr.Error())
 	}
-	// GPU信息查询
-	ret, err = getGPUInfo(ret)
-	if err != nil && model.EnableLoger {
-		Logger.Info(err.Error())
+	gpuRet, gpuErr := getGPUInfo(ret)
+	if gpuErr != nil && model.EnableLoger {
+		Logger.Info(gpuErr.Error())
 	}
-	// 硬盘信息查询
-	ret.DiskTotal, ret.DiskUsage, ret.Percentage, ret.DiskRealPath, ret.BootPath, err = getDiskInfo()
-	if err != nil && model.EnableLoger {
-		Logger.Info(err.Error())
-	}
-	// 内存信息查询
-	ret.MemoryTotal, ret.MemoryUsage, ret.SwapTotal, ret.SwapUsage, ret.VirtioBalloon, ret.KSM = getMemoryInfo()
-	// 获取负载信息
-	load1, load5, load15, err := getSystemLoad()
-	if err != nil {
-		load1, load5, load15 = 0, 0, 0
-	}
+	ret = gpuRet
+
+	// 硬盘、内存、负载、TCP加速 互不依赖，并发执行
+	var wg sync.WaitGroup
+
+	var (
+		diskTotal     []string
+		diskUsage     []string
+		percentage    []string
+		diskRealPath  []string
+		bootPath      string
+		memTotal      string
+		memUsage      string
+		swapTotal     string
+		swapUsage     string
+		virtioBalloon string
+		ksm           string
+		load1         float64
+		load5         float64
+		load15        float64
+		tcpAccel      string
+	)
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		diskTotal, diskUsage, percentage, diskRealPath, bootPath, _ = getDiskInfo()
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		memTotal, memUsage, swapTotal, swapUsage, virtioBalloon, ksm = getMemoryInfo()
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		var e error
+		load1, load5, load15, e = getSystemLoad()
+		if e != nil {
+			load1, load5, load15 = 0, 0, 0
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		tcpAccel = utils.GetTCPAccelerateStatus()
+	}()
+
+	wg.Wait()
+
+	// 所有并发任务完成，将结果写入 ret
+	ret.DiskTotal = diskTotal
+	ret.DiskUsage = diskUsage
+	ret.Percentage = percentage
+	ret.DiskRealPath = diskRealPath
+	ret.BootPath = bootPath
+	ret.MemoryTotal = memTotal
+	ret.MemoryUsage = memUsage
+	ret.SwapTotal = swapTotal
+	ret.SwapUsage = swapUsage
+	ret.VirtioBalloon = virtioBalloon
+	ret.KSM = ksm
 	ret.Load = strconv.FormatFloat(load1, 'f', 2, 64) + " / " +
 		strconv.FormatFloat(load5, 'f', 2, 64) + " / " +
 		strconv.FormatFloat(load15, 'f', 2, 64)
-	// 获取TCP控制算法
-	ret.TcpAccelerationMethod = utils.GetTCPAccelerateStatus()
+	ret.TcpAccelerationMethod = tcpAccel
 	return ret
 }
 

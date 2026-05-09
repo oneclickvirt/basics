@@ -224,12 +224,16 @@ func updateSystemLoad(ret *model.SystemInfo) {
 	out, err := exec.Command("w").Output()
 	if err == nil {
 		loadFields := strings.Fields(string(out))
-		load = strings.Join(loadFields[len(loadFields)-3:], " ")
+		if len(loadFields) >= 3 {
+			load = strings.Join(loadFields[len(loadFields)-3:], " ")
+		}
 	} else {
 		out, err = exec.Command("uptime").Output()
 		if err == nil {
 			fields := strings.Fields(string(out))
-			load = strings.Join(fields[len(fields)-3:], " ")
+			if len(fields) >= 3 {
+				load = strings.Join(fields[len(fields)-3:], " ")
+			}
 		}
 	}
 	if load != "" {
@@ -619,13 +623,22 @@ func getDarwinCpuInfo(ret *model.SystemInfo) (*model.SystemInfo, error) {
 	if len(model.MacOSInfo) > 0 {
 		for _, line := range model.MacOSInfo {
 			if strings.Contains(line, "Chip") && ret.CpuModel == "" {
-				ret.CpuModel = strings.TrimSpace(strings.Split(line, ":")[1])
+				parts := strings.SplitN(line, ":", 2)
+				if len(parts) == 2 {
+					ret.CpuModel = strings.TrimSpace(parts[1])
+				}
 			}
 			if strings.Contains(line, "Total Number of Cores") && ret.CpuCores == "" {
-				ret.CpuCores = strings.TrimSpace(strings.Split(line, ":")[1])
+				parts := strings.SplitN(line, ":", 2)
+				if len(parts) == 2 {
+					ret.CpuCores = strings.TrimSpace(parts[1])
+				}
 			}
 			if strings.Contains(line, "Memory") && ret.MemoryTotal == "" {
-				ret.MemoryTotal = strings.TrimSpace(strings.Split(line, ":")[1])
+				parts := strings.SplitN(line, ":", 2)
+				if len(parts) == 2 {
+					ret.MemoryTotal = strings.TrimSpace(parts[1])
+				}
 			}
 		}
 	}
@@ -664,7 +677,10 @@ func updateSysctlCpuInfo(ret *model.SystemInfo, sysctlPath string) {
 	if ret.CpuCache == "" {
 		ccache, err := getSysctlValue(sysctlPath, "hw.cacheconfig")
 		if err == nil && !strings.Contains(ccache, "cannot") {
-			ret.CpuCache = strings.TrimSpace(strings.Split(ccache, ":")[1])
+			parts := strings.Split(ccache, ":")
+			if len(parts) > 1 {
+				ret.CpuCache = strings.TrimSpace(parts[1])
+			}
 		}
 	}
 }

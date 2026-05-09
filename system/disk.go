@@ -119,7 +119,7 @@ func deduplicatePhysicalDisks(diskInfos []DiskSingelInfo, currentDiskInfo *DiskS
 				}
 			}
 		}
-		if largest.BootPath != currentDiskInfo.BootPath || largest.MountPath != currentDiskInfo.MountPath {
+		if currentDiskInfo == nil || largest.BootPath != currentDiskInfo.BootPath || largest.MountPath != currentDiskInfo.MountPath {
 			result = append(result, largest)
 		} else if !hasCurrent {
 			result = append(result, largest)

@@ -20,6 +20,9 @@ func getLoadFromProc() (float64, float64, float64, error) {
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		fields := strings.Fields(scanner.Text())
+		if len(fields) < 3 {
+			break
+		}
 		// 解析负载信息并转换为 float64 类型
 		load1, _ := strconv.ParseFloat(fields[0], 64)
 		load5, _ := strconv.ParseFloat(fields[1], 64)

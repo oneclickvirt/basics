@@ -26,14 +26,14 @@ func GetLoad1() float64 {
 
 // GetTCPAccelerateStatus 查询TCP控制算法
 func GetTCPAccelerateStatus() string {
-	cmd := exec.Command("sysctl", "-n", "net.ipv4.tcp_congestion_control")
+	cmd := exec.Command("sysctl", "-n", "net.inet.tcp.cc_algorithm")
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	err := cmd.Run()
 	if err != nil {
 		return ""
 	} else {
-		return out.String()
+		return strings.TrimSpace(out.String())
 	}
 }
 
@@ -56,7 +56,7 @@ func parseTimeZone(output string) string {
 // GetTimeZone 获取当前时区
 func GetTimeZone() string {
 	var CurrentTimeZone string
-	output, err := exec.Command("timedatectl", "|", "grep", "Time zone").Output()
+	output, err := exec.Command("timedatectl").Output()
 	if err == nil && strings.Contains(string(output), "Time zone") {
 		timeZone := parseTimeZone(string(output))
 		CurrentTimeZone = timeZone

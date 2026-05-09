@@ -47,7 +47,8 @@ func parseTimeZone(output string) string {
 		// 找到冒号后的第一个空格，分割字符串获取时区信息
 		parts := strings.SplitN(output, " ", 2)
 		if len(parts) > 1 {
-			return strings.TrimSpace(parts[1])
+			firstLine := strings.SplitN(strings.TrimSpace(parts[1]), "\n", 2)[0]
+			return strings.TrimSpace(firstLine)
 		}
 	}
 	return ""

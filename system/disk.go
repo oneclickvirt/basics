@@ -265,7 +265,7 @@ func getBSDDisks() ([]DiskSingelInfo, *DiskSingelInfo, string) {
 				totalBytes := parseSize(fields[1])
 				percentageStr := fields[4]
 				if percentageStr != "" && strings.Contains(percentageStr, "%") {
-					percentageStr = strings.ReplaceAll(percentageStr, "%", "%%")
+					percentageStr = strings.ReplaceAll(percentageStr, "%%", "%")
 				}
 				diskInfo := DiskSingelInfo{
 					TotalStr:      fields[1],
@@ -347,7 +347,7 @@ func getOverlayDisk() *DiskSingelInfo {
 				usedBytes := tpDiskUsage * 1024
 				percentageStr := fields[4]
 				if percentageStr != "" && strings.Contains(percentageStr, "%") {
-					percentageStr = strings.ReplaceAll(percentageStr, "%", "%%")
+					percentageStr = strings.ReplaceAll(percentageStr, "%%", "%")
 				}
 				diskInfo := createDiskInfo(totalBytes, usedBytes, fields[0], "/")
 				diskInfo.PercentageStr = percentageStr
@@ -406,7 +406,7 @@ func createDiskInfo(totalBytes, usedBytes uint64, bootPath, mountPath string) Di
 		diskUsageStr = strconv.FormatFloat(diskUsageGB, 'f', 2, 64) + " GB"
 	}
 	percentage := float64(usedBytes) / float64(totalBytes) * 100
-	percentageStr := strconv.FormatFloat(percentage, 'f', 1, 64) + "%%"
+	percentageStr := strconv.FormatFloat(percentage, 'f', 1, 64) + "%"
 	return DiskSingelInfo{
 		TotalStr:      diskTotalStr,
 		UsageStr:      diskUsageStr,

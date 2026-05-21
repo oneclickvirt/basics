@@ -2,6 +2,7 @@ package system
 
 import (
 	"fmt"
+	"runtime/debug"
 	"runtime"
 	"strconv"
 	"sync"
@@ -65,18 +66,42 @@ func GetSystemInfo() *model.SystemInfo {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer func() {
+			if r := recover(); r != nil {
+				diskTotal, diskUsage, percentage, diskRealPath, bootPath = nil, nil, nil, nil, ""
+				if model.EnableLoger {
+					Logger.Info(fmt.Sprintf("panic in getDiskInfo: %v\n%s", r, string(debug.Stack())))
+				}
+			}
+		}()
 		diskTotal, diskUsage, percentage, diskRealPath, bootPath, _ = getDiskInfo()
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer func() {
+			if r := recover(); r != nil {
+				memTotal, memUsage, swapTotal, swapUsage, virtioBalloon, ksm = "", "", "", "", "", ""
+				if model.EnableLoger {
+					Logger.Info(fmt.Sprintf("panic in getMemoryInfo: %v\n%s", r, string(debug.Stack())))
+				}
+			}
+		}()
 		memTotal, memUsage, swapTotal, swapUsage, virtioBalloon, ksm = getMemoryInfo()
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer func() {
+			if r := recover(); r != nil {
+				load1, load5, load15 = 0, 0, 0
+				if model.EnableLoger {
+					Logger.Info(fmt.Sprintf("panic in getSystemLoad: %v\n%s", r, string(debug.Stack())))
+				}
+			}
+		}()
 		var e error
 		load1, load5, load15, e = getSystemLoad()
 		if e != nil {
@@ -87,6 +112,14 @@ func GetSystemInfo() *model.SystemInfo {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer func() {
+			if r := recover(); r != nil {
+				tcpAccel = ""
+				if model.EnableLoger {
+					Logger.Info(fmt.Sprintf("panic in GetTCPAccelerateStatus: %v\n%s", r, string(debug.Stack())))
+				}
+			}
+		}()
 		tcpAccel = utils.GetTCPAccelerateStatus()
 	}()
 

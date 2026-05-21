@@ -3,6 +3,7 @@ package system
 import (
 	"fmt"
 	"math"
+	"runtime/debug"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -39,6 +40,13 @@ func updateGPUStat(gpuStat *uint64, wg *sync.WaitGroup) {
 		defer Logger.Sync()
 	}
 	defer wg.Done()
+	defer func() {
+		if r := recover(); r != nil {
+			if model.EnableLoger {
+				Logger.Info(fmt.Sprintf("panic in updateGPUStat: %v\n%s", r, string(debug.Stack())))
+			}
+		}
+	}()
 	if !atomic.CompareAndSwapInt32(&updateGPUStatus, 0, 1) {
 		return
 	}

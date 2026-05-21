@@ -47,12 +47,8 @@ func fetchCIDRFromBGPToolsAndHe(client *req.Client, ip string) (string, int, err
 	heResp, err := client.R().Get(heURL)
 	if err == nil && heResp.IsSuccessState() {
 		cidr := parseCIDRFromHE(heResp.String())
-		if cidr != "" {
-			cidrs := strings.Split(cidr, "/")
-			if len(cidrs) == 2 {
-				cidrNum, _ := strconv.Atoi(cidrs[1])
-				return cidrs[0], cidrNum, nil
-			}
+		if cidrIP, cidrPrefix, parseErr := parseCIDR(cidr); parseErr == nil {
+			return cidrIP, cidrPrefix, nil
 		}
 	}
 	// 如果 HE 解析失败，尝试从 BGP Tools 获取 CIDR
@@ -65,16 +61,29 @@ func fetchCIDRFromBGPToolsAndHe(client *req.Client, ip string) (string, int, err
 		return "", -1, fmt.Errorf("BGP Tools HTTP request failed: %s", bgpResp.Status)
 	}
 	cidr := parseCIDRFromBGPTools(bgpResp.String())
+	cidrIP, cidrNum, parseErr := parseCIDR(cidr)
+	if parseErr != nil {
+		return "", -1, fmt.Errorf("failed to extract CIDR from BGP Tools")
+	}
+	return cidrIP, cidrNum, nil
+}
+
+func parseCIDR(cidr string) (string, int, error) {
 	if cidr == "" {
-		return "", -1, fmt.Errorf("failed to extract CIDR from BGP Tools")
+		return "", -1, fmt.Errorf("empty cidr")
 	}
-	cidrs := strings.Split(cidr, "/")
-	if len(cidrs) != 2 {
-		return "", -1, fmt.Errorf("failed to extract CIDR from BGP Tools")
+	parts := strings.Split(cidr, "/")
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		return "", -1, fmt.Errorf("invalid cidr format")
 	}
-	// fmt.Println("bgp", cidr)
-	cidrNum, _ := strconv.Atoi(cidrs[1])
-	return cidrs[0], cidrNum, nil
+	if net.ParseIP(parts[0]) == nil {
+		return "", -1, fmt.Errorf("invalid ip")
+	}
+	prefix, err := strconv.Atoi(parts[1])
+	if err != nil || prefix < 0 || prefix > 32 {
+		return "", -1, fmt.Errorf("invalid prefix")
+	}
+	return parts[0], prefix, nil
 }
 
 // parseCIDRFromHE 解析 HE 的 whois 数据，提取 CIDR
@@ -155,6 +164,9 @@ func countActiveIPs(client *req.Client, url string, total int) (int, error) {
 	if !resp.IsSuccessState() {
 		return 0, fmt.Errorf("HTTP request failed: %s", resp.Status)
 	}
+	if resp.Body == nil {
+		return 0, fmt.Errorf("empty response body")
+	}
 	// 读取 PNG 数据到内存
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -170,6 +182,9 @@ func countActiveIPs(client *req.Client, url string, total int) (int, error) {
 		return 0, fmt.Errorf("failed to decode PNG: %w", err)
 	}
 	totalPixels := img.Bounds().Dx() * img.Bounds().Dy()
+	if totalPixels <= 0 {
+		return 0, fmt.Errorf("invalid image dimensions")
+	}
 	count := 0
 	for y := 0; y < img.Bounds().Dy(); y++ {
 		for x := 0; x < img.Bounds().Dx(); x++ {

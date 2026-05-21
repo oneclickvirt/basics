@@ -17,6 +17,15 @@ type NetCheckResult struct {
 	StackType string // "IPv4", "IPv6", "DualStack", "None"
 }
 
+func runSafeProbe(wg *sync.WaitGroup, fn func()) {
+	defer wg.Done()
+	defer func() {
+		if recover() != nil {
+		}
+	}()
+	fn()
+}
+
 func makeResolver(proto, dnsAddr string) *net.Resolver {
 	return &net.Resolver{
 		PreferGo: true,
@@ -56,70 +65,67 @@ func CheckPublicAccess(timeout time.Duration) NetCheckResult {
 	for _, check := range checks {
 		wg.Add(1)
 		go func(tag, addr, kind string) {
-			defer wg.Done()
-			defer func() {
-				if r := recover(); r != nil {
-				}
-			}()
-			switch kind {
-			case "udp4", "udp6":
-				dialer := &net.Dialer{
-					Timeout: timeout / 4,
-				}
-				conn, err := dialer.DialContext(ctx, kind, addr)
-				if err == nil && conn != nil {
-					conn.Close()
-					select {
-					case resultChan <- tag:
-					case <-ctx.Done():
-						return
+			runSafeProbe(&wg, func() {
+				switch kind {
+				case "udp4", "udp6":
+					dialer := &net.Dialer{
+						Timeout: timeout / 4,
 					}
-				}
-			case "http4", "http6":
-				var resolver *net.Resolver
-				if kind == "http4" {
-					resolver = makeResolver("udp4", "223.5.5.5:53")
-				} else {
-					resolver = makeResolver("udp6", "[2400:3200::1]:53")
-				}
-				dialer := &net.Dialer{
-					Timeout:  timeout / 4,
-					Resolver: resolver,
-				}
-				transport := &http.Transport{
-					DialContext:           dialer.DialContext,
-					MaxIdleConns:          1,
-					MaxIdleConnsPerHost:   1,
-					IdleConnTimeout:       time.Second,
-					TLSHandshakeTimeout:   timeout / 4,
-					ResponseHeaderTimeout: timeout / 4,
-					DisableKeepAlives:     true,
-				}
-				client := &http.Client{
-					Timeout:   timeout / 4,
-					Transport: transport,
-					CheckRedirect: func(req *http.Request, via []*http.Request) error {
-						return http.ErrUseLastResponse
-					},
-				}
-				req, err := http.NewRequestWithContext(ctx, "HEAD", addr, nil)
-				if err != nil {
-					return
-				}
-				resp, err := client.Do(req)
-				if err == nil && resp != nil {
-					if resp.Body != nil {
-						resp.Body.Close()
-					}
-					if resp.StatusCode < 500 {
+					conn, err := dialer.DialContext(ctx, kind, addr)
+					if err == nil && conn != nil {
+						conn.Close()
 						select {
 						case resultChan <- tag:
 						case <-ctx.Done():
 							return
 						}
 					}
+				case "http4", "http6":
+					var resolver *net.Resolver
+					if kind == "http4" {
+						resolver = makeResolver("udp4", "223.5.5.5:53")
+					} else {
+						resolver = makeResolver("udp6", "[2400:3200::1]:53")
+					}
+					dialer := &net.Dialer{
+						Timeout:  timeout / 4,
+						Resolver: resolver,
+					}
+					transport := &http.Transport{
+						DialContext:           dialer.DialContext,
+						MaxIdleConns:          1,
+						MaxIdleConnsPerHost:   1,
+						IdleConnTimeout:       time.Second,
+						TLSHandshakeTimeout:   timeout / 4,
+						ResponseHeaderTimeout: timeout / 4,
+						DisableKeepAlives:     true,
+					}
+					client := &http.Client{
+						Timeout:   timeout / 4,
+						Transport: transport,
+						CheckRedirect: func(req *http.Request, via []*http.Request) error {
+							return http.ErrUseLastResponse
+						},
+					}
+					req, err := http.NewRequestWithContext(ctx, "HEAD", addr, nil)
+					if err != nil {
+						return
+					}
+					resp, err := client.Do(req)
+					if err == nil && resp != nil {
+						if resp.Body != nil {
+							resp.Body.Close()
+						}
+						if resp.StatusCode < 500 {
+							select {
+							case resultChan <- tag:
+							case <-ctx.Done():
+								return
+							}
+						}
+					}
 				}
-			}
+			})
 		}(check.Tag, check.Addr, check.Kind)
 	}
 	go func() {

@@ -38,7 +38,13 @@ func main() {
 	}
 	language = strings.ToLower(language)
 	go func() {
-		http.Get("https://hits.spiritlhl.net/basics.svg?action=hit&title=Hits&title_bg=%23555555&count_bg=%230eecf8&edge_flat=false")
+		defer func() {
+			_ = recover()
+		}()
+		resp, err := http.Get("https://hits.spiritlhl.net/basics.svg?action=hit&title=Hits&title_bg=%23555555&count_bg=%230eecf8&edge_flat=false")
+		if err == nil && resp != nil && resp.Body != nil {
+			_ = resp.Body.Close()
+		}
 	}()
 	fmt.Println("Repo:", "https://github.com/oneclickvirt/basics")
 	preCheck := utils.CheckPublicAccess(3 * time.Second)

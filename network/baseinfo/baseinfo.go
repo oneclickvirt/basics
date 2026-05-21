@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -262,6 +263,17 @@ func fillASNWithFallback(ipInfo *model.IpInfo, netType string) *model.IpInfo {
 	for i, fn := range asnFunctions {
 		go func(f func(string, string) (*model.IpInfo, error), name string) {
 			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					if model.EnableLoger {
+						Logger.Info(fmt.Sprintf("ASN fallback panic in %s: %v\n%s", name, r, string(debug.Stack())))
+					}
+					select {
+					case asnChan <- &ipInfoWithSource{info: nil, source: name}:
+					default:
+					}
+				}
+			}()
 			if result, err := f(ipInfo.Ip, netType); err == nil && result != nil {
 				select {
 				case asnChan <- &ipInfoWithSource{info: result, source: name}:
@@ -320,12 +332,24 @@ type ipInfoWithSource struct {
 	source string
 }
 
+func safeFetchIPInfo(fetchFunc func(string) (*model.IpInfo, error), ipType string) (ret *model.IpInfo, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("panic in fetch function for %s: %v", ipType, r)
+			if model.EnableLoger {
+				Logger.Info(fmt.Sprintf("safeFetchIPInfo panic: %v\n%s", r, string(debug.Stack())))
+			}
+		}
+	}()
+	return fetchFunc(ipType)
+}
+
 // executeFunctions 并发执行函数
 // 仅区分IPV4或IPV6，BOTH的情况需要两次执行本函数分别指定
 func executeFunctions(checkType string, fetchFunc func(string) (*model.IpInfo, error), funcName string, ipInfoChan chan *ipInfoWithSource, wg *sync.WaitGroup) {
 	defer wg.Done()
 	ipFetcher := func(ipType string) {
-		ipInfo, err := fetchFunc(ipType)
+		ipInfo, err := safeFetchIPInfo(fetchFunc, ipType)
 		if err == nil {
 			select {
 			case ipInfoChan <- &ipInfoWithSource{info: ipInfo, source: funcName}:
@@ -339,18 +363,10 @@ func executeFunctions(checkType string, fetchFunc func(string) (*model.IpInfo, e
 		}
 	}
 	if checkType == "ipv4" {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			ipFetcher("tcp4")
-		}()
+		ipFetcher("tcp4")
 	}
 	if checkType == "ipv6" {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			ipFetcher("tcp6")
-		}()
+		ipFetcher("tcp6")
 	}
 }
 

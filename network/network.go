@@ -9,6 +9,8 @@ import (
 	. "github.com/oneclickvirt/defaultset"
 )
 
+var runIpCheck = baseinfo.RunIpCheck
+
 // sortAndTranslateText 对原始文本进行排序和翻译
 // func sortAndTranslateText(orginList []string, language string, fields []string) string {
 // 	var result string
@@ -38,6 +40,9 @@ import (
 
 // processPrintIPInfo 处理IP信息
 func processPrintIPInfo(ipVersion, language string, ipResult *model.IpInfo) string {
+	if ipResult == nil {
+		return ""
+	}
 	var info string
 	var headASNString, headLocationString string
 	if ipVersion == "ipv4" {
@@ -119,7 +124,7 @@ func NetworkCheck(checkType string, enableSecurityCheck bool, language string) (
 	}
 	var ipv4, ipv6, ipInfo string
 	if checkType == "both" {
-		ipInfoV4Result, ipInfoV6Result, err := baseinfo.RunIpCheck("both")
+		ipInfoV4Result, ipInfoV6Result, err := runIpCheck("both")
 		if err != nil && model.EnableLoger {
 			Logger.Info(err.Error())
 		}
@@ -129,11 +134,11 @@ func NetworkCheck(checkType string, enableSecurityCheck bool, language string) (
 		}
 		if ipInfoV6Result != nil {
 			ipInfo += processPrintIPInfo("ipv6", language, ipInfoV6Result)
-			ipv6 = ipInfoV4Result.Ip
+			ipv6 = ipInfoV6Result.Ip
 		}
 		return ipv4, ipv6, ipInfo, "", nil
 	} else if checkType == "ipv4" {
-		ipInfoV4Result, _, err := baseinfo.RunIpCheck("ipv4")
+		ipInfoV4Result, _, err := runIpCheck("ipv4")
 		if err != nil && model.EnableLoger {
 			Logger.Info(err.Error())
 		}
@@ -143,7 +148,7 @@ func NetworkCheck(checkType string, enableSecurityCheck bool, language string) (
 		}
 		return ipv4, ipv6, ipInfo, "", nil
 	} else if checkType == "ipv6" {
-		ipInfoV6Result, _, err := baseinfo.RunIpCheck("ipv6")
+		_, ipInfoV6Result, err := runIpCheck("ipv6")
 		if err != nil && model.EnableLoger {
 			Logger.Info(err.Error())
 		}

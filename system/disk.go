@@ -145,9 +145,9 @@ func getPhysicalDiskName(device string) string {
 		}
 	}
 	if strings.HasPrefix(device, "/dev/disk") {
-		parts := strings.Split(device, "s")
-		if len(parts) > 1 {
-			return parts[0]
+		re := regexp.MustCompile(`^(/dev/disk[0-9]+)s[0-9]+$`)
+		if match := re.FindStringSubmatch(device); len(match) == 2 {
+			return match[1]
 		}
 	}
 	return device

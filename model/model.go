@@ -1,6 +1,6 @@
 package model
 
-const BasicsVersion = "v0.0.17"
+const BasicsVersion = "v0.0.18"
 
 var EnableLoger bool
 

@@ -405,7 +405,10 @@ func createDiskInfo(totalBytes, usedBytes uint64, bootPath, mountPath string) Di
 	} else {
 		diskUsageStr = strconv.FormatFloat(diskUsageGB, 'f', 2, 64) + " GB"
 	}
-	percentage := float64(usedBytes) / float64(totalBytes) * 100
+	percentage := 0.0
+	if totalBytes > 0 {
+		percentage = float64(usedBytes) / float64(totalBytes) * 100
+	}
 	percentageStr := strconv.FormatFloat(percentage, 'f', 1, 64) + "%"
 	return DiskSingelInfo{
 		TotalStr:      diskTotalStr,

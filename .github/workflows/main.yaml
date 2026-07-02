@@ -15,12 +15,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
       
     - name: Set up Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v6
       with:
-        go-version: 'stable'
+        go-version-file: go.mod
+        check-latest: true
       
     - name: Test on Default Platform
       run: |
@@ -43,12 +44,13 @@ jobs:
     needs: build
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
 
     - name: Set up Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v6
       with:
-        go-version: 'stable'
+        go-version-file: go.mod
+        check-latest: true
 
     - name: Build and Release
       run: |

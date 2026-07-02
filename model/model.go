@@ -1,6 +1,6 @@
 package model
 
-const BasicsVersion = "v0.0.18"
+const BasicsVersion = "v0.0.19"
 
 var EnableLoger bool
 
@@ -25,7 +25,7 @@ type SecurityScore struct {
 	CommunityVoteMalicious *int
 	CloudFlareRisk         *int // 还没有加入
 	HumanPercent           *int
-    BotPercent             *int
+	BotPercent             *int
 	ThreatScore            *int
 	FraudScore             *int
 	AbuseScore             *int
@@ -43,8 +43,8 @@ type SecurityInfo struct {
 	UsageType          string // connection_type、usage_type、asn_type
 	CompanyType        string // company type
 	BrowserType        string
-    DeviceType         string
-    OSType             string
+	DeviceType         string
+	OSType             string
 	IsCloudProvider    string
 	IsDatacenter       string // datacenter、server、hosting
 	IsMobile           string

@@ -1,8 +1,11 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"runtime"
@@ -15,24 +18,73 @@ import (
 	"github.com/oneclickvirt/basics/utils"
 )
 
+type cliOptions struct {
+	help, version, jsonOutput, log bool
+	language                       string
+	timeout                        time.Duration
+}
+
+func parseCLI(args []string) (cliOptions, error) {
+	opts := cliOptions{}
+	fs := newFlagSet(&opts, io.Discard)
+	if err := fs.Parse(args); err != nil {
+		return opts, err
+	}
+	if opts.timeout < 0 {
+		return opts, fmt.Errorf("timeout must not be negative")
+	}
+	return opts, nil
+}
+
+func newFlagSet(opts *cliOptions, output io.Writer) *flag.FlagSet {
+	fs := flag.NewFlagSet("basics", flag.ContinueOnError)
+	fs.SetOutput(output)
+	fs.BoolVar(&opts.help, "h", false, "Show help information")
+	fs.BoolVar(&opts.version, "v", false, "Show version")
+	fs.BoolVar(&opts.log, "log", false, "Enable logging")
+	fs.StringVar(&opts.language, "l", "", "Set language (en or zh)")
+	fs.BoolVar(&opts.jsonOutput, "json", false, "Print the structured system report as JSON")
+	fs.BoolVar(&opts.jsonOutput, "structured", false, "Print the structured system report as JSON")
+	fs.DurationVar(&opts.timeout, "timeout", 0, "Structured report timeout (for example 10s)")
+	return fs
+}
+
+func printCLIHelp(program string) {
+	fmt.Printf("Usage: %s [options]\n", program)
+	newFlagSet(&cliOptions{}, os.Stdout).PrintDefaults()
+}
+
 func main() {
-	var showVersion, help bool
-	var language string
-	basicsFlag := flag.NewFlagSet("basics", flag.ContinueOnError)
-	basicsFlag.BoolVar(&help, "h", false, "Show help information")
-	basicsFlag.BoolVar(&showVersion, "v", false, "Show version")
-	basicsFlag.BoolVar(&model.EnableLoger, "log", false, "Enable logging")
-	basicsFlag.StringVar(&language, "l", "", "Set language (en or zh)")
-	basicsFlag.Parse(os.Args[1:])
-	if help {
-		fmt.Printf("Usage: %s [options]\n", os.Args[0])
-		basicsFlag.PrintDefaults()
+	opts, err := parseCLI(os.Args[1:])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(2)
+	}
+	model.EnableLoger = opts.log
+	if opts.help {
+		printCLIHelp(os.Args[0])
 		return
 	}
-	if showVersion {
+	if opts.version {
 		fmt.Println(model.BasicsVersion)
 		return
 	}
+	if opts.jsonOutput {
+		timeout := opts.timeout
+		if timeout <= 0 {
+			timeout = 10 * time.Second
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+		report, marshalErr := json.Marshal(system.CollectSystemReport(ctx))
+		if marshalErr != nil {
+			fmt.Fprintln(os.Stderr, marshalErr)
+			return
+		}
+		fmt.Println(string(report))
+		return
+	}
+	language := opts.language
 	if language == "" {
 		language = "zh"
 	}

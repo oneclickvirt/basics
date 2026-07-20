@@ -266,21 +266,64 @@ func collectSystemReport(ctx context.Context, files ReportFileReader, collector 
 		ctx = context.Background()
 	}
 	if err := ctx.Err(); err != nil {
-		report.Availability = AvailabilityCanceled
-		report.Error = err.Error()
+		cancelSystemReport(report, err)
 		return report
 	}
 	report.CPU = collectCPUReport(files, operatingSystem)
+	if err := ctx.Err(); err != nil {
+		cancelSystemReport(report, err)
+		return report
+	}
 	report.Memory = collectMemoryReport(files, operatingSystem)
+	if err := ctx.Err(); err != nil {
+		cancelSystemReport(report, err)
+		return report
+	}
 	report.Cgroup = collectCgroupReport(files, operatingSystem)
+	if err := ctx.Err(); err != nil {
+		cancelSystemReport(report, err)
+		return report
+	}
 	report.Virtualization = collectVirtualizationReport(files, operatingSystem)
+	if err := ctx.Err(); err != nil {
+		cancelSystemReport(report, err)
+		return report
+	}
 	report.GPUs = collectGPUReports(files, operatingSystem)
+	if err := ctx.Err(); err != nil {
+		cancelSystemReport(report, err)
+		return report
+	}
 	report.PCI = collectPCIReport(files, operatingSystem)
+	if err := ctx.Err(); err != nil {
+		cancelSystemReport(report, err)
+		return report
+	}
 	report.Disks = collectDiskReports(files, operatingSystem, collector)
+	if err := ctx.Err(); err != nil {
+		cancelSystemReport(report, err)
+		return report
+	}
 	report.Network = collectNetworkTuningReport(files, operatingSystem)
+	if err := ctx.Err(); err != nil {
+		cancelSystemReport(report, err)
+		return report
+	}
 	report.Firmware = collectFirmwareReport(files, operatingSystem)
+	if err := ctx.Err(); err != nil {
+		cancelSystemReport(report, err)
+		return report
+	}
 	report.MemoryTopology = collectMemoryTopologyReport(files, operatingSystem)
+	if err := ctx.Err(); err != nil {
+		cancelSystemReport(report, err)
+		return report
+	}
 	report.RAID = collectRAIDReport(files, operatingSystem)
+	if err := ctx.Err(); err != nil {
+		cancelSystemReport(report, err)
+		return report
+	}
 	report.RAID.Controllers = raidControllersFromPCI(report.PCI)
 	if len(report.RAID.Controllers) > 0 && report.RAID.Availability != AvailabilityAvailable {
 		report.RAID.Availability = AvailabilityAvailable
@@ -290,6 +333,11 @@ func collectSystemReport(ctx context.Context, files ReportFileReader, collector 
 		report.Availability = AvailabilityUnavailable
 	}
 	return report
+}
+
+func cancelSystemReport(report *SystemReport, err error) {
+	report.Availability = AvailabilityCanceled
+	report.Error = err.Error()
 }
 
 func raidControllersFromPCI(pci PCIReport) []RAIDControllerReport {

@@ -8,11 +8,30 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 type reportFixture struct {
 	files map[string]string
 	globs map[string][]string
+}
+
+type cancelingReportFixture struct {
+	reportFixture
+	cancel context.CancelFunc
+	reads  map[string]int
+}
+
+func (f *cancelingReportFixture) ReadFile(path string) ([]byte, error) {
+	f.reads[path]++
+	if path == "/proc/cpuinfo" {
+		f.cancel()
+	}
+	return f.reportFixture.ReadFile(path)
+}
+
+func (f *cancelingReportFixture) Glob(pattern string) ([]string, error) {
+	return f.reportFixture.Glob(pattern)
 }
 
 func (f reportFixture) ReadFile(path string) ([]byte, error) {
@@ -235,6 +254,47 @@ func TestCollectSystemReportCancellationAndUnsupported(t *testing.T) {
 	report = CollectSystemReportFrom(context.Background(), reportFixture{}, "windows")
 	if report.CPU.Availability != AvailabilityUnsupported || report.Cgroup.Availability != AvailabilityUnsupported {
 		t.Fatalf("unsupported sections = cpu:%q cgroup:%q", report.CPU.Availability, report.Cgroup.Availability)
+	}
+}
+
+func TestCollectSystemReportStopsBetweenCollectorsWhenCanceled(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	fixture := &cancelingReportFixture{
+		reportFixture: reportFixture{files: map[string]string{
+			"/proc/cpuinfo":                  "processor : 0\nmodel name : Fixture CPU\n",
+			"/sys/devices/system/cpu/online": "0\n",
+			"/proc/meminfo":                  "MemTotal: 1024 kB\n",
+		}},
+		cancel: cancel,
+		reads:  make(map[string]int),
+	}
+	report := CollectSystemReportFrom(ctx, fixture, "linux")
+	if report.Availability != AvailabilityCanceled || report.Error != context.Canceled.Error() {
+		t.Fatalf("canceled report = %+v", report)
+	}
+	if fixture.reads["/proc/meminfo"] != 0 {
+		t.Fatalf("memory collector ran after cancellation: reads=%v", fixture.reads)
+	}
+}
+
+func TestCollectSystemReportStopsBetweenCollectorsAfterDeadline(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+	fixture := &cancelingReportFixture{
+		reportFixture: reportFixture{files: map[string]string{
+			"/proc/cpuinfo":                  "processor : 0\nmodel name : Fixture CPU\n",
+			"/sys/devices/system/cpu/online": "0\n",
+			"/proc/meminfo":                  "MemTotal: 1024 kB\n",
+		}},
+		cancel: func() { <-ctx.Done() },
+		reads:  make(map[string]int),
+	}
+	report := CollectSystemReportFrom(ctx, fixture, "linux")
+	if report.Availability != AvailabilityCanceled || report.Error != context.DeadlineExceeded.Error() {
+		t.Fatalf("timed-out report = %+v", report)
+	}
+	if fixture.reads["/proc/meminfo"] != 0 {
+		t.Fatalf("memory collector ran after timeout: reads=%v", fixture.reads)
 	}
 }
 

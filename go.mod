@@ -8,7 +8,7 @@ require (
 	github.com/json-iterator/go v1.1.12
 	github.com/libp2p/go-nat v0.2.0
 	github.com/oneclickvirt/defaultset v0.0.2-20240624082446
-	github.com/oneclickvirt/gostun v0.0.6-20260509043509
+	github.com/oneclickvirt/gostun v0.0.7-20260720103959
 	github.com/shirou/gopsutil/v4 v4.25.6
 	github.com/yusufpapurcu/wmi v1.2.4
 	golang.org/x/sys v0.45.0

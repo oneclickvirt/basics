@@ -40,12 +40,15 @@ type ReportSection struct {
 
 type CPUReport struct {
 	ReportSection
-	Model          string `json:"model,omitempty"`
-	LogicalCPUs    *int   `json:"logical_cpus,omitempty"`
-	PhysicalCores  *int   `json:"physical_cores,omitempty"`
-	ThreadsPerCore *int   `json:"threads_per_core,omitempty"`
-	Sockets        *int   `json:"sockets,omitempty"`
-	CPUSet         string `json:"cpuset,omitempty"`
+	Model                   string   `json:"model,omitempty"`
+	FrequencyMHz            *float64 `json:"frequency_mhz,omitempty"`
+	LogicalCPUs             *int     `json:"logical_cpus,omitempty"`
+	PhysicalCores           *int     `json:"physical_cores,omitempty"`
+	ThreadsPerCore          *int     `json:"threads_per_core,omitempty"`
+	Sockets                 *int     `json:"sockets,omitempty"`
+	CPUSet                  string   `json:"cpuset,omitempty"`
+	AESNI                   *bool    `json:"aes_ni,omitempty"`
+	VirtualizationSupported *bool    `json:"virtualization_supported,omitempty"`
 }
 
 type MemoryReport struct {
@@ -584,6 +587,18 @@ func collectCPUReport(files ReportFileReader, operatingSystem string) CPUReport 
 		if result.Model == "" {
 			result.Model = firstNonEmpty(fields["model name"], fields["Processor"], fields["machine"])
 		}
+		if result.FrequencyMHz == nil {
+			result.FrequencyMHz = parsePositiveFloat(fields["cpu MHz"])
+		}
+		features := strings.Fields(strings.ToLower(firstNonEmpty(fields["flags"], fields["Features"], fields["features"])))
+		if len(features) > 0 {
+			if result.AESNI == nil {
+				result.AESNI = boolPtr(containsString(features, "aes"))
+			}
+			if result.VirtualizationSupported == nil && (containsString(features, "vmx") || containsString(features, "svm")) {
+				result.VirtualizationSupported = boolPtr(true)
+			}
+		}
 		physicalID := firstNonEmpty(fields["physical id"], fields["package id"])
 		coreID := firstNonEmpty(fields["core id"], fields["cpu number"])
 		if physicalID != "" || coreID != "" {
@@ -972,6 +987,23 @@ func parseUint(value string) uint64 {
 	return parsed
 }
 
+func parsePositiveFloat(value string) *float64 {
+	parsed, err := strconv.ParseFloat(strings.TrimSpace(value), 64)
+	if err != nil || parsed <= 0 {
+		return nil
+	}
+	return &parsed
+}
+
+func containsString(values []string, target string) bool {
+	for _, value := range values {
+		if value == target {
+			return true
+		}
+	}
+	return false
+}
+
 func parseInt64Fields(value string) []int64 {
 	result := make([]int64, 0, 3)
 	for _, field := range strings.Fields(value) {
@@ -1045,5 +1077,9 @@ func firstNonEmpty(values ...string) string {
 }
 
 func intPtr(value int) *int { return &value }
+
+func boolPtr(value bool) *bool { return &value }
+
+func float64Ptr(value float64) *float64 { return &value }
 
 func int64Ptr(value int64) *int64 { return &value }

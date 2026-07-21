@@ -19,9 +19,9 @@ import (
 )
 
 type cliOptions struct {
-	help, version, jsonOutput, log bool
-	language                       string
-	timeout                        time.Duration
+	help, version, jsonOutput, textOutput, log bool
+	language                                   string
+	timeout                                    time.Duration
 }
 
 func parseCLI(args []string) (cliOptions, error) {
@@ -32,6 +32,9 @@ func parseCLI(args []string) (cliOptions, error) {
 	}
 	if opts.timeout < 0 {
 		return opts, fmt.Errorf("timeout must not be negative")
+	}
+	if opts.jsonOutput && opts.textOutput {
+		return opts, fmt.Errorf("--json/--structured and --text are mutually exclusive")
 	}
 	return opts, nil
 }
@@ -45,6 +48,7 @@ func newFlagSet(opts *cliOptions, output io.Writer) *flag.FlagSet {
 	fs.StringVar(&opts.language, "l", "", "Set language (en or zh)")
 	fs.BoolVar(&opts.jsonOutput, "json", false, "Print the structured system report as JSON")
 	fs.BoolVar(&opts.jsonOutput, "structured", false, "Print the structured system report as JSON")
+	fs.BoolVar(&opts.textOutput, "text", false, "Print the structured hardware summary as compact text")
 	fs.DurationVar(&opts.timeout, "timeout", 0, "Structured report timeout (for example 10s)")
 	return fs
 }
@@ -69,14 +73,23 @@ func main() {
 		fmt.Println(model.BasicsVersion)
 		return
 	}
-	if opts.jsonOutput {
+	if opts.jsonOutput || opts.textOutput {
 		timeout := opts.timeout
 		if timeout <= 0 {
 			timeout = 10 * time.Second
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
-		report, marshalErr := json.Marshal(system.CollectSystemReport(ctx))
+		systemReport := system.CollectSystemReport(ctx)
+		if opts.textOutput {
+			language := strings.ToLower(strings.TrimSpace(opts.language))
+			if language == "" {
+				language = "zh"
+			}
+			fmt.Print(system.RenderSystemReportText(systemReport, language))
+			return
+		}
+		report, marshalErr := json.Marshal(systemReport)
 		if marshalErr != nil {
 			fmt.Fprintln(os.Stderr, marshalErr)
 			return

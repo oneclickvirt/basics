@@ -12,8 +12,12 @@ func TestParseCLIOptions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parseCLI returned error: %v", err)
 	}
-	if !opts.jsonOutput || opts.language != "en" || opts.timeout != 2*time.Second {
+	if !opts.jsonOutput || opts.textOutput || opts.language != "en" || opts.timeout != 2*time.Second {
 		t.Fatalf("unexpected options: %#v", opts)
+	}
+	textOpts, err := parseCLI([]string{"--text", "-l", "zh"})
+	if err != nil || !textOpts.textOutput || textOpts.jsonOutput || textOpts.language != "zh" {
+		t.Fatalf("unexpected text options: %#v, err=%v", textOpts, err)
 	}
 }
 
@@ -30,5 +34,11 @@ func TestHelpRetainsLegacyFlags(t *testing.T) {
 func TestParseCLIRejectsNegativeTimeout(t *testing.T) {
 	if _, err := parseCLI([]string{"--timeout", "-1s"}); err == nil {
 		t.Fatal("expected negative timeout to be rejected")
+	}
+}
+
+func TestParseCLIRejectsConflictingStructuredOutputs(t *testing.T) {
+	if _, err := parseCLI([]string{"--json", "--text"}); err == nil {
+		t.Fatal("expected conflicting structured output modes to be rejected")
 	}
 }

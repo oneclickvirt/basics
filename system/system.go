@@ -1,9 +1,10 @@
 package system
 
 import (
+	"context"
 	"fmt"
-	"runtime/debug"
 	"runtime"
+	"runtime/debug"
 	"strconv"
 	"sync"
 
@@ -213,6 +214,7 @@ func CheckSystemInfo(language string) string {
 		if ret.TcpAccelerationMethod != "" {
 			res += " Tcp Accelerate      : " + ret.TcpAccelerationMethod + "\n"
 		}
+		res = appendSystemReportText(res, CollectSystemReport(context.Background()), language)
 
 	} else if language == "zh" {
 		res += " CPU 型号            : " + ret.CpuModel + "\n"
@@ -280,6 +282,11 @@ func CheckSystemInfo(language string) string {
 		if ret.TcpAccelerationMethod != "" {
 			res += " TCP加速方式         : " + ret.TcpAccelerationMethod + "\n"
 		}
+		res = appendSystemReportText(res, CollectSystemReport(context.Background()), language)
 	}
 	return res
+}
+
+func appendSystemReportText(legacy string, report *SystemReport, language string) string {
+	return legacy + RenderSystemReportText(report, language)
 }

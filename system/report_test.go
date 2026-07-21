@@ -58,7 +58,7 @@ func (f reportFixture) Glob(pattern string) ([]string, error) {
 func TestCollectSystemReportCgroupV2Fixture(t *testing.T) {
 	fixture := reportFixture{
 		files: map[string]string{
-			"/proc/cpuinfo":                                       "processor : 0\nmodel name : Fixture CPU\nphysical id : 0\ncore id : 0\n\nprocessor : 1\nmodel name : Fixture CPU\nphysical id : 0\ncore id : 1\n",
+			"/proc/cpuinfo":                                       "processor : 0\nmodel name : Fixture CPU\ncpu MHz : 2400.000\nflags : aes vmx sse\nphysical id : 0\ncore id : 0\n\nprocessor : 1\nmodel name : Fixture CPU\ncpu MHz : 2400.000\nflags : aes vmx sse\nphysical id : 0\ncore id : 1\n",
 			"/proc/meminfo":                                       "MemTotal:       1048576 kB\nMemAvailable:    524288 kB\nSwapTotal:       262144 kB\nSwapFree:        131072 kB\n",
 			"/sys/devices/system/cpu/online":                      "0-1\n",
 			"/sys/fs/cgroup/cgroup.controllers":                   "cpu cpuset memory pids\n",
@@ -115,6 +115,9 @@ func TestCollectSystemReportCgroupV2Fixture(t *testing.T) {
 	}
 	if report.Cgroup.MemoryLimitBytes == nil || *report.Cgroup.MemoryLimitBytes != 1073741824 {
 		t.Fatalf("unexpected memory limit: %+v", report.Cgroup.MemoryLimitBytes)
+	}
+	if report.CPU.FrequencyMHz == nil || *report.CPU.FrequencyMHz != 2400 || report.CPU.AESNI == nil || !*report.CPU.AESNI || report.CPU.VirtualizationSupported == nil || !*report.CPU.VirtualizationSupported {
+		t.Fatalf("unexpected CPU capabilities: %+v", report.CPU)
 	}
 	if !report.Virtualization.Container || report.Virtualization.ContainerRuntime != "docker" || report.Virtualization.Type != "container" {
 		t.Fatalf("unexpected virtualization report: %+v", report.Virtualization)
@@ -176,6 +179,54 @@ func TestCollectPCIReportStableAndRedacted(t *testing.T) {
 	unsupported := collectPCIReport(fixture, "windows")
 	if unsupported.Availability != AvailabilityUnsupported || len(unsupported.Devices) != 0 {
 		t.Fatalf("non-Linux PCI result = %+v", unsupported)
+	}
+}
+
+func TestCollectCPUReportRecognizesARMFeatures(t *testing.T) {
+	report := collectCPUReport(reportFixture{files: map[string]string{
+		"/proc/cpuinfo":                  "processor : 0\nProcessor : ARMv8 Fixture\nFeatures : fp asimd aes\n",
+		"/sys/devices/system/cpu/online": "0\n",
+	}}, "linux")
+	if report.AESNI == nil || !*report.AESNI {
+		t.Fatalf("ARM AES feature was not recognized: %+v", report)
+	}
+	if report.VirtualizationSupported != nil {
+		t.Fatalf("ARM virtualization support should remain unknown without an explicit flag: %+v", report)
+	}
+}
+
+func TestRenderSystemReportTextIsCompactAndRedacted(t *testing.T) {
+	report := &SystemReport{
+		Cgroup:         CgroupReport{ReportSection: ReportSection{Availability: AvailabilityAvailable}, Version: "v2", CPUQuotaCores: float64Ptr(2), CPUSet: "0-1", MemoryCurrentBytes: int64Ptr(512 << 20), MemoryLimitBytes: int64Ptr(1 << 30), PidsLimit: int64Ptr(128)},
+		Network:        NetworkTuningReport{ReportSection: ReportSection{Availability: AvailabilityAvailable}, DefaultQdisc: "fq", TCPRMem: []int64{4096, 131072, 6291456}, TCPWMem: []int64{4096, 16384, 4194304}},
+		Firmware:       FirmwareReport{ReportSection: ReportSection{Availability: AvailabilityAvailable}, BoardVendor: "Fixture", BoardName: "Board", BIOSVendor: "BIOS", BIOSVersion: "1.0"},
+		PCI:            PCIReport{ReportSection: ReportSection{Availability: AvailabilityAvailable}, Devices: []PCIDeviceReport{{Address: "private-address", Driver: "virtio-pci"}}},
+		GPUs:           []GPUReport{{Path: "/private/gpu/path", Driver: "virtio-pci"}},
+		MemoryTopology: MemoryTopologyReport{ReportSection: ReportSection{Availability: AvailabilityAvailable}, Nodes: []NUMANodeReport{{Node: "node0"}}, DIMMs: []DIMMReport{{PartNumber: "private-part", SerialRedacted: true, SizeBytes: int64Ptr(8 << 30)}}, HugePagesTotal: int64Ptr(16), HugePagesFree: int64Ptr(8), HugePageBytes: int64Ptr(2 << 20)},
+		Disks:          []DiskReport{{Name: "private-disk", Health: DiskHealthReport{ReportSection: ReportSection{Availability: AvailabilityAvailable}, Protocol: "nvme", Status: "passed"}, Temperature: DiskTemperatureReport{ReportSection: ReportSection{Availability: AvailabilityAvailable}, Celsius: float64Ptr(42)}}},
+		RAID:           RAIDReport{ReportSection: ReportSection{Availability: AvailabilityAvailable}, Arrays: []RAIDArrayReport{{Name: "private-array", Level: "raid1", Members: []string{"private-member"}, Degraded: true}}, Controllers: []RAIDControllerReport{{Address: "private-controller", Driver: "megaraid_sas"}}},
+	}
+	text := RenderSystemReportText(report, "zh")
+	for _, want := range []string{"Cgroup 限制", "TCP 缓冲/队列", "主板/BIOS", "PCI/GPU", "内存拓扑", "物理盘 1", "RAID", "nvme", "42.0 C", "degraded 1"} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("summary missing %q:\n%s", want, text)
+		}
+	}
+	english := RenderSystemReportText(report, "en")
+	for _, want := range []string{"Cgroup Limits", "TCP Buffers/Qdisc", "Board/BIOS", "Memory Topology", "Physical Disk 1"} {
+		if !strings.Contains(english, want) {
+			t.Fatalf("English summary missing %q:\n%s", want, english)
+		}
+	}
+	for _, forbidden := range []string{"private-address", "/private/gpu/path", "private-part", "private-disk", "private-array", "private-member", "private-controller"} {
+		if strings.Contains(text, forbidden) {
+			t.Fatalf("summary leaked %q:\n%s", forbidden, text)
+		}
+	}
+	legacy := " CPU 型号            : Fixture CPU\n"
+	combined := appendSystemReportText(legacy, report, "zh")
+	if !strings.HasPrefix(combined, legacy) || !strings.Contains(combined, "Cgroup 限制") {
+		t.Fatalf("legacy lines were not preserved before the summary:\n%s", combined)
 	}
 }
 

@@ -385,6 +385,20 @@ func TestCollectDiskReportsFiltersLogicalDevices(t *testing.T) {
 	}
 }
 
+func TestCollectDiskReportsUsesSysfsSectorSizeFor4Kn(t *testing.T) {
+	fixture := reportFixture{
+		files: map[string]string{
+			"/sys/block/nvme0n1/size":                     "2048\n",
+			"/sys/block/nvme0n1/queue/logical_block_size": "4096\n",
+		},
+		globs: map[string][]string{"/sys/block/*": {"/sys/block/nvme0n1"}},
+	}
+	reports := collectDiskReports(fixture, "linux", nil)
+	if len(reports) != 1 || reports[0].LogicalBytes == nil || *reports[0].LogicalBytes != 4096 || reports[0].SizeBytes == nil || *reports[0].SizeBytes != 1<<20 {
+		t.Fatalf("4Kn sysfs capacity was not converted from 512-byte sectors: %+v", reports)
+	}
+}
+
 func TestCollectDiskReportsRejectsSizeOverflow(t *testing.T) {
 	fixture := reportFixture{
 		files: map[string]string{

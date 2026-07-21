@@ -804,13 +804,18 @@ func collectDiskReports(files ReportFileReader, operatingSystem string, collecto
 		if collector != nil {
 			report.Health, report.Temperature = collector.Collect(name, files)
 		}
-		if sectors > 0 && logical > 0 {
+		if sectors > 0 {
+			// Linux sysfs exposes /sys/block/<dev>/size in 512-byte
+			// sectors, regardless of the device logical block size. Keep
+			// logical_block_size as metadata, but do not use it to scale
+			// the capacity or 4Kn devices are reported eight times too large.
+			const sysfsSectorBytes = uint64(512)
 			maxInt64 := uint64(^uint64(0) >> 1)
-			if sectors > maxInt64/logical {
+			if sectors > maxInt64/sysfsSectorBytes {
 				report.Availability = AvailabilityError
 				report.Error = "disk size exceeds int64 range"
 			} else {
-				report.SizeBytes = int64Ptr(int64(sectors * logical))
+				report.SizeBytes = int64Ptr(int64(sectors * sysfsSectorBytes))
 			}
 		}
 		if value := parseBool(readString(files, filepath.Join(path, "ro"))); value != nil {

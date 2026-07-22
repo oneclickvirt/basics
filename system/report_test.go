@@ -195,39 +195,93 @@ func TestCollectCPUReportRecognizesARMFeatures(t *testing.T) {
 	}
 }
 
-func TestRenderSystemReportTextIsCompactAndRedacted(t *testing.T) {
+func TestRenderSystemReportTextUsesOneSemanticPerRowAndRedacts(t *testing.T) {
 	report := &SystemReport{
 		Cgroup:         CgroupReport{ReportSection: ReportSection{Availability: AvailabilityAvailable}, Version: "v2", CPUQuotaCores: float64Ptr(2), CPUSet: "0-1", MemoryCurrentBytes: int64Ptr(512 << 20), MemoryLimitBytes: int64Ptr(1 << 30), PidsLimit: int64Ptr(128)},
-		Network:        NetworkTuningReport{ReportSection: ReportSection{Availability: AvailabilityAvailable}, DefaultQdisc: "fq", TCPRMem: []int64{4096, 131072, 6291456}, TCPWMem: []int64{4096, 16384, 4194304}},
-		Firmware:       FirmwareReport{ReportSection: ReportSection{Availability: AvailabilityAvailable}, BoardVendor: "Fixture", BoardName: "Board", BIOSVendor: "BIOS", BIOSVersion: "1.0"},
+		Firmware:       FirmwareReport{ReportSection: ReportSection{Availability: AvailabilityAvailable}, BoardVendor: "Fixture", BoardName: "Board", BoardVersion: "2.0", BIOSVendor: "BIOS", BIOSVersion: "1.0", BIOSDate: "2026-07-22"},
 		PCI:            PCIReport{ReportSection: ReportSection{Availability: AvailabilityAvailable}, Devices: []PCIDeviceReport{{Address: "private-address", Driver: "virtio-pci"}}},
-		GPUs:           []GPUReport{{Path: "/private/gpu/path", Driver: "virtio-pci"}},
+		GPUs:           []GPUReport{{Path: "/private/gpu/path", Driver: "virtio-gpu"}},
 		MemoryTopology: MemoryTopologyReport{ReportSection: ReportSection{Availability: AvailabilityAvailable}, Nodes: []NUMANodeReport{{Node: "node0"}}, DIMMs: []DIMMReport{{PartNumber: "private-part", SerialRedacted: true, SizeBytes: int64Ptr(8 << 30)}}, HugePagesTotal: int64Ptr(16), HugePagesFree: int64Ptr(8), HugePageBytes: int64Ptr(2 << 20)},
 		Disks:          []DiskReport{{Name: "private-disk", Health: DiskHealthReport{ReportSection: ReportSection{Availability: AvailabilityAvailable}, Protocol: "nvme", Status: "passed"}, Temperature: DiskTemperatureReport{ReportSection: ReportSection{Availability: AvailabilityAvailable}, Celsius: float64Ptr(42)}}},
 		RAID:           RAIDReport{ReportSection: ReportSection{Availability: AvailabilityAvailable}, Arrays: []RAIDArrayReport{{Name: "private-array", Level: "raid1", Members: []string{"private-member"}, Degraded: true}}, Controllers: []RAIDControllerReport{{Address: "private-controller", Driver: "megaraid_sas"}}},
 	}
 	text := RenderSystemReportText(report, "zh")
-	for _, want := range []string{"Cgroup 限制", "TCP 缓冲/队列", "主板/BIOS", "PCI/GPU", "内存拓扑", "物理盘 1", "RAID", "nvme", "42.0 C", "degraded 1"} {
+	for _, want := range []string{
+		"Cgroup版本", "Cgroup CPU配额", "Cgroup CPU集合", "Cgroup内存使用", "Cgroup内存上限", "Cgroup进程上限",
+		"主板厂商", "主板型号", "主板版本", "BIOS厂商", "BIOS版本", "BIOS日期",
+		"PCI设备数量", "PCI驱动", "GPU设备数量", "GPU驱动", "NUMA节点数量", "DIMM数量",
+		"HugePages总数", "HugePages空闲", "HugePage大小", "物理盘 1 协议", "物理盘 1 健康", "物理盘 1 温度",
+		"RAID阵列数量", "RAID级别", "RAID降级阵列", "RAID控制器数量", "RAID驱动", "nvme", "42.0 C",
+	} {
 		if !strings.Contains(text, want) {
-			t.Fatalf("summary missing %q:\n%s", want, text)
+			t.Fatalf("report missing %q:\n%s", want, text)
 		}
 	}
 	english := RenderSystemReportText(report, "en")
-	for _, want := range []string{"Cgroup Limits", "TCP Buffers/Qdisc", "Board/BIOS", "Memory Topology", "Physical Disk 1"} {
+	for _, want := range []string{"Cgroup Version", "Board Vendor", "Board Name", "Board Version", "BIOS Vendor", "BIOS Version", "BIOS Date", "DIMM Count", "Disk 1 Protocol", "RAID Arrays", "RAID Controllers"} {
 		if !strings.Contains(english, want) {
-			t.Fatalf("English summary missing %q:\n%s", want, english)
+			t.Fatalf("English report missing %q:\n%s", want, english)
+		}
+	}
+	for _, forbidden := range []string{"DIMM总容量", "DIMM Total", "8 GiB", "主板/BIOS", "PCI/GPU", "内存拓扑"} {
+		if strings.Contains(text, forbidden) || strings.Contains(english, forbidden) {
+			t.Fatalf("report retained duplicate or compound field %q:\n%s\n%s", forbidden, text, english)
 		}
 	}
 	for _, forbidden := range []string{"private-address", "/private/gpu/path", "private-part", "private-disk", "private-array", "private-member", "private-controller"} {
 		if strings.Contains(text, forbidden) {
-			t.Fatalf("summary leaked %q:\n%s", forbidden, text)
+			t.Fatalf("report leaked %q:\n%s", forbidden, text)
 		}
 	}
-	legacy := " CPU 型号            : Fixture CPU\n"
-	combined := appendSystemReportText(legacy, report, "zh")
-	if !strings.HasPrefix(combined, legacy) || !strings.Contains(combined, "Cgroup 限制") {
-		t.Fatalf("legacy lines were not preserved before the summary:\n%s", combined)
+	assertReportRowsAligned(t, text)
+	assertReportRowsAligned(t, english)
+	assertReportLabelOrder(t, text, []string{
+		"Cgroup版本", "主板厂商", "主板型号", "主板版本", "BIOS厂商", "BIOS版本", "BIOS日期",
+		"PCI设备数量", "PCI驱动", "GPU设备数量", "GPU驱动", "NUMA节点数量", "DIMM数量",
+		"物理盘 1 协议", "物理盘 1 健康", "物理盘 1 温度", "RAID阵列数量", "RAID级别",
+		"RAID降级阵列", "RAID控制器数量", "RAID驱动",
+	})
+	assertReportLabelOrder(t, english, []string{
+		"Cgroup Version", "Board Vendor", "Board Name", "Board Version", "BIOS Vendor", "BIOS Version", "BIOS Date",
+		"PCI Device Count", "PCI Drivers", "GPU Device Count", "GPU Drivers", "NUMA Node Count", "DIMM Count",
+		"Disk 1 Protocol", "Disk 1 Health", "Disk 1 Temperature", "RAID Arrays", "RAID Levels",
+		"RAID Degraded Arrays", "RAID Controllers", "RAID Drivers",
+	})
+}
+
+func TestRenderExtendedSystemReportTextOrdersTCPBeforeCgroup(t *testing.T) {
+	report := &SystemReport{
+		Network: NetworkTuningReport{ReportSection: ReportSection{Availability: AvailabilityAvailable}, DefaultQdisc: "fq", TCPRMem: []int64{4096, 131072, 6291456}, TCPWMem: []int64{4096, 16384, 4194304}},
+		Cgroup:  CgroupReport{ReportSection: ReportSection{Availability: AvailabilityAvailable}, Version: "v2"},
 	}
+	for language, labels := range map[string][]string{
+		"zh": {"TCP加速方式", "TCP队列规则", "TCP接收缓冲", "TCP发送缓冲", "Cgroup版本"},
+		"en": {"Tcp Accelerate", "TCP Queue Discipline", "TCP Receive Buffer", "TCP Send Buffer", "Cgroup Version"},
+	} {
+		text := renderExtendedSystemReportText(report, language, "bbr")
+		lines := strings.Split(strings.TrimSpace(text), "\n")
+		if len(lines) < len(labels) {
+			t.Fatalf("%s report has too few rows:\n%s", language, text)
+		}
+		for index, label := range labels {
+			if !strings.Contains(lines[index], label) {
+				t.Fatalf("%s row %d = %q, want %q; report:\n%s", language, index, lines[index], label, text)
+			}
+		}
+	}
+}
+
+func TestRenderSystemReportTextIncludesStandaloneTCPRows(t *testing.T) {
+	report := &SystemReport{
+		Network: NetworkTuningReport{
+			ReportSection:     ReportSection{Availability: AvailabilityAvailable},
+			CongestionControl: "bbr", DefaultQdisc: "fq",
+			TCPRMem: []int64{4096, 131072, 6291456}, TCPWMem: []int64{4096, 16384, 4194304},
+		},
+		Cgroup: CgroupReport{ReportSection: ReportSection{Availability: AvailabilityAvailable}, Version: "v2"},
+	}
+	text := RenderSystemReportText(report, "zh")
+	assertReportLabelOrder(t, text, []string{"TCP加速方式", "TCP队列规则", "TCP接收缓冲", "TCP发送缓冲", "Cgroup版本"})
 }
 
 func TestRenderSystemReportTextAlignsLabelsByDisplayWidth(t *testing.T) {
@@ -238,7 +292,12 @@ func TestRenderSystemReportTextAlignsLabelsByDisplayWidth(t *testing.T) {
 		PCI:            PCIReport{ReportSection: ReportSection{Availability: AvailabilityAvailable}, Devices: []PCIDeviceReport{{Driver: "virtio-pci"}}},
 		MemoryTopology: MemoryTopologyReport{ReportSection: ReportSection{Availability: AvailabilityAvailable}, Nodes: []NUMANodeReport{{Node: "node0"}}},
 	}
-	text := RenderSystemReportText(report, "zh")
+	text := renderExtendedSystemReportText(report, "zh", "bbr")
+	assertReportRowsAligned(t, text)
+}
+
+func assertReportRowsAligned(t *testing.T, text string) {
+	t.Helper()
 	for _, line := range strings.Split(strings.TrimRight(text, "\n"), "\n") {
 		colon := strings.IndexRune(line, ':')
 		if colon < 0 {
@@ -250,6 +309,21 @@ func TestRenderSystemReportTextAlignsLabelsByDisplayWidth(t *testing.T) {
 		if !strings.HasPrefix(line, " ") {
 			t.Fatalf("summary row does not reserve the first cell: %q", line)
 		}
+	}
+}
+
+func assertReportLabelOrder(t *testing.T, text string, labels []string) {
+	t.Helper()
+	previous := -1
+	for _, label := range labels {
+		position := strings.Index(text, " "+label)
+		if position < 0 {
+			t.Fatalf("report is missing ordered label %q:\n%s", label, text)
+		}
+		if position <= previous {
+			t.Fatalf("report label %q is out of order:\n%s", label, text)
+		}
+		previous = position
 	}
 }
 

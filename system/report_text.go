@@ -9,9 +9,17 @@ import (
 
 const reportLabelDisplayWidth = 20
 
-// RenderSystemReportText adds a compact, non-identifying summary for fields
-// that are not represented by the historical SystemInfo text.
+// RenderSystemReportText adds non-identifying fields that are not represented
+// by the historical SystemInfo text. Each row describes one property, while
+// rows for the same entity remain adjacent.
 func RenderSystemReportText(report *SystemReport, language string) string {
+	if report == nil {
+		return ""
+	}
+	return renderExtendedSystemReportText(report, language, report.Network.CongestionControl)
+}
+
+func renderHardwareReportText(report *SystemReport, language string) string {
 	if report == nil {
 		return ""
 	}
@@ -29,19 +37,57 @@ func RenderSystemReportText(report *SystemReport, language string) string {
 		}
 	}
 
-	row("Cgroup 限制", "Cgroup Limits", cgroupSummary(report.Cgroup))
-	row("TCP 缓冲/队列", "TCP Buffers/Qdisc", networkTuningSummary(report.Network))
-	row("主板/BIOS", "Board/BIOS", firmwareSummary(report.Firmware))
-	row("PCI/GPU", "PCI/GPU", pciGPUSummary(report.PCI, report.GPUs))
-	row("内存拓扑", "Memory Topology", memoryTopologySummary(report.MemoryTopology))
+	renderCgroupRows(row, report.Cgroup)
+	renderFirmwareRows(row, report.Firmware)
+	renderPCIGPURows(row, report.PCI, report.GPUs)
+	renderMemoryTopologyRows(row, report.MemoryTopology)
 	for index, disk := range report.Disks {
 		if index >= 4 {
 			row("物理盘其余", "Other Physical Disks", fmt.Sprintf("%d", len(report.Disks)-index))
 			break
 		}
-		row(fmt.Sprintf("物理盘 %d", index+1), fmt.Sprintf("Physical Disk %d", index+1), diskSummary(disk))
+		renderDiskRows(row, index+1, disk)
 	}
-	row("RAID", "RAID", raidSummary(report.RAID))
+	renderRAIDRows(row, report.RAID)
+	return builder.String()
+}
+
+func renderExtendedSystemReportText(report *SystemReport, language, tcpAcceleration string) string {
+	zh := strings.EqualFold(strings.TrimSpace(language), "zh")
+	var builder strings.Builder
+	tcpAcceleration = strings.TrimSpace(tcpAcceleration)
+	if tcpAcceleration != "" {
+		if zh {
+			builder.WriteString(formatReportRow("TCP加速方式", tcpAcceleration))
+		} else {
+			builder.WriteString(formatReportRow("Tcp Accelerate", tcpAcceleration))
+		}
+	}
+	builder.WriteString(renderNetworkReportText(report, language))
+	builder.WriteString(renderHardwareReportText(report, language))
+	return builder.String()
+}
+
+func renderNetworkReportText(report *SystemReport, language string) string {
+	if report == nil || report.Network.Availability != AvailabilityAvailable {
+		return ""
+	}
+	zh := strings.EqualFold(strings.TrimSpace(language), "zh")
+	var builder strings.Builder
+	row := func(zhLabel, enLabel, value string) {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			return
+		}
+		if zh {
+			builder.WriteString(formatReportRow(zhLabel, value))
+		} else {
+			builder.WriteString(formatReportRow(enLabel, value))
+		}
+	}
+	row("TCP队列规则", "TCP Queue Discipline", report.Network.DefaultQdisc)
+	row("TCP接收缓冲", "TCP Receive Buffer", formatByteTuple(report.Network.TCPRMem))
+	row("TCP发送缓冲", "TCP Send Buffer", formatByteTuple(report.Network.TCPWMem))
 	return builder.String()
 }
 
@@ -85,133 +131,107 @@ func reportRuneIsWide(r rune) bool {
 		(r >= 0x1f300 && r <= 0x1faff)
 }
 
-func cgroupSummary(cgroup CgroupReport) string {
+func renderCgroupRows(row func(string, string, string), cgroup CgroupReport) {
 	if cgroup.Availability != AvailabilityAvailable {
-		return ""
+		return
 	}
-	parts := make([]string, 0, 4)
-	if cgroup.Version != "" {
-		parts = append(parts, cgroup.Version)
-	}
+	row("Cgroup版本", "Cgroup Version", cgroup.Version)
 	if cgroup.CPUQuotaCores != nil {
-		parts = append(parts, fmt.Sprintf("CPU %.2f", *cgroup.CPUQuotaCores))
+		row("Cgroup CPU配额", "Cgroup CPU Quota", fmt.Sprintf("%.2f cores", *cgroup.CPUQuotaCores))
 	}
-	if cgroup.CPUSet != "" {
-		parts = append(parts, "cpuset "+cgroup.CPUSet)
+	row("Cgroup CPU集合", "Cgroup CPU Set", cgroup.CPUSet)
+	if cgroup.MemoryCurrentBytes != nil {
+		row("Cgroup内存使用", "Cgroup Memory Usage", formatCompactBytes(*cgroup.MemoryCurrentBytes))
 	}
-	if cgroup.MemoryCurrentBytes != nil && cgroup.MemoryLimitBytes != nil {
-		parts = append(parts, "memory "+formatCompactBytes(*cgroup.MemoryCurrentBytes)+"/"+formatCompactBytes(*cgroup.MemoryLimitBytes))
-	} else if cgroup.MemoryLimitBytes != nil {
-		parts = append(parts, "memory limit "+formatCompactBytes(*cgroup.MemoryLimitBytes))
+	if cgroup.MemoryLimitBytes != nil {
+		row("Cgroup内存上限", "Cgroup Memory Limit", formatCompactBytes(*cgroup.MemoryLimitBytes))
+	}
+	if cgroup.MemoryHighBytes != nil {
+		row("Cgroup内存高水位", "Cgroup Memory High", formatCompactBytes(*cgroup.MemoryHighBytes))
+	}
+	if cgroup.MemorySwapLimitBytes != nil {
+		row("Cgroup交换上限", "Cgroup Swap Limit", formatCompactBytes(*cgroup.MemorySwapLimitBytes))
 	}
 	if cgroup.PidsLimit != nil {
-		parts = append(parts, fmt.Sprintf("pids %d", *cgroup.PidsLimit))
+		row("Cgroup进程上限", "Cgroup PID Limit", fmt.Sprintf("%d", *cgroup.PidsLimit))
 	}
-	return strings.Join(parts, " / ")
 }
 
-func networkTuningSummary(network NetworkTuningReport) string {
-	if network.Availability != AvailabilityAvailable {
-		return ""
-	}
-	parts := make([]string, 0, 3)
-	if network.DefaultQdisc != "" {
-		parts = append(parts, "qdisc "+network.DefaultQdisc)
-	}
-	if value := formatByteTuple(network.TCPRMem); value != "" {
-		parts = append(parts, "rmem "+value)
-	}
-	if value := formatByteTuple(network.TCPWMem); value != "" {
-		parts = append(parts, "wmem "+value)
-	}
-	return strings.Join(parts, " / ")
-}
-
-func firmwareSummary(firmware FirmwareReport) string {
+func renderFirmwareRows(row func(string, string, string), firmware FirmwareReport) {
 	if firmware.Availability != AvailabilityAvailable {
-		return ""
+		return
 	}
-	board := joinValues(firmware.BoardVendor, firmware.BoardName, firmware.BoardVersion)
-	bios := joinValues(firmware.BIOSVendor, firmware.BIOSVersion, firmware.BIOSDate)
-	if board != "" && bios != "" {
-		return board + " / BIOS " + bios
-	}
-	return joinValues(board, bios)
+	row("主板厂商", "Board Vendor", firmware.BoardVendor)
+	row("主板型号", "Board Name", firmware.BoardName)
+	row("主板版本", "Board Version", firmware.BoardVersion)
+	row("BIOS厂商", "BIOS Vendor", firmware.BIOSVendor)
+	row("BIOS版本", "BIOS Version", firmware.BIOSVersion)
+	row("BIOS日期", "BIOS Date", firmware.BIOSDate)
 }
 
-func pciGPUSummary(pci PCIReport, gpus []GPUReport) string {
+func renderPCIGPURows(row func(string, string, string), pci PCIReport, gpus []GPUReport) {
 	if len(pci.Devices) == 0 && len(gpus) == 0 {
-		return ""
+		return
 	}
-	parts := []string{fmt.Sprintf("PCI %d", len(pci.Devices)), fmt.Sprintf("GPU %d", len(gpus))}
-	drivers := make(map[string]struct{})
+	pciDrivers := make(map[string]struct{})
+	gpuDrivers := make(map[string]struct{})
 	for _, gpu := range gpus {
 		if gpu.Driver != "" {
-			drivers[gpu.Driver] = struct{}{}
+			gpuDrivers[gpu.Driver] = struct{}{}
 		}
 	}
 	for _, device := range pci.Devices {
 		if device.Driver != "" {
-			drivers[device.Driver] = struct{}{}
+			pciDrivers[device.Driver] = struct{}{}
 		}
 	}
-	values := sortedLimitedKeys(drivers, 4)
-	if len(values) > 0 {
-		parts = append(parts, "drivers "+strings.Join(values, ","))
-	}
-	return strings.Join(parts, " / ")
+	row("PCI设备数量", "PCI Device Count", fmt.Sprintf("%d", len(pci.Devices)))
+	row("PCI驱动", "PCI Drivers", strings.Join(sortedLimitedKeys(pciDrivers, 4), ","))
+	row("GPU设备数量", "GPU Device Count", fmt.Sprintf("%d", len(gpus)))
+	row("GPU驱动", "GPU Drivers", strings.Join(sortedLimitedKeys(gpuDrivers, 4), ","))
 }
 
-func memoryTopologySummary(topology MemoryTopologyReport) string {
+func renderMemoryTopologyRows(row func(string, string, string), topology MemoryTopologyReport) {
 	if topology.Availability != AvailabilityAvailable {
-		return ""
+		return
 	}
-	parts := []string{fmt.Sprintf("NUMA %d", len(topology.Nodes)), fmt.Sprintf("DIMM %d", len(topology.DIMMs))}
-	var dimmBytes int64
-	for _, dimm := range topology.DIMMs {
-		if dimm.SizeBytes != nil && *dimm.SizeBytes <= (1<<63-1)-dimmBytes {
-			dimmBytes += *dimm.SizeBytes
-		}
-	}
-	if dimmBytes > 0 {
-		parts = append(parts, "DIMM total "+formatCompactBytes(dimmBytes))
-	}
+	row("NUMA节点数量", "NUMA Node Count", fmt.Sprintf("%d", len(topology.Nodes)))
+	row("DIMM数量", "DIMM Count", fmt.Sprintf("%d", len(topology.DIMMs)))
 	if topology.HugePagesTotal != nil {
-		huge := fmt.Sprintf("hugepages %d", *topology.HugePagesTotal)
-		if topology.HugePagesFree != nil {
-			huge += fmt.Sprintf("/%d free", *topology.HugePagesFree)
-		}
-		if topology.HugePageBytes != nil {
-			huge += " @ " + formatCompactBytes(*topology.HugePageBytes)
-		}
-		parts = append(parts, huge)
+		row("HugePages总数", "HugePages Total", fmt.Sprintf("%d", *topology.HugePagesTotal))
 	}
-	return strings.Join(parts, " / ")
+	if topology.HugePagesFree != nil {
+		row("HugePages空闲", "HugePages Free", fmt.Sprintf("%d", *topology.HugePagesFree))
+	}
+	if topology.HugePageBytes != nil {
+		row("HugePage大小", "HugePage Size", formatCompactBytes(*topology.HugePageBytes))
+	}
 }
 
-func diskSummary(disk DiskReport) string {
-	parts := make([]string, 0, 3)
+func renderDiskRows(row func(string, string, string), index int, disk DiskReport) {
+	zhPrefix := fmt.Sprintf("物理盘 %d", index)
+	enPrefix := fmt.Sprintf("Disk %d", index)
 	protocol := disk.Health.Protocol
 	if protocol == "" || protocol == "unknown" {
 		protocol = storageProtocol(disk.Name)
 	}
-	if protocol != "" && protocol != "unknown" {
-		parts = append(parts, protocol)
+	if protocol == "unknown" {
+		protocol = ""
 	}
-	if disk.Health.Status != "" {
-		parts = append(parts, disk.Health.Status)
-	} else if disk.Health.Availability != "" && disk.Health.Availability != AvailabilityAvailable {
-		parts = append(parts, string(disk.Health.Availability))
+	row(zhPrefix+" 协议", enPrefix+" Protocol", protocol)
+	health := disk.Health.Status
+	if health == "" && disk.Health.Availability != "" && disk.Health.Availability != AvailabilityAvailable {
+		health = string(disk.Health.Availability)
 	}
+	row(zhPrefix+" 健康", enPrefix+" Health", health)
 	if disk.Temperature.Celsius != nil {
-		parts = append(parts, fmt.Sprintf("%.1f C", *disk.Temperature.Celsius))
+		row(zhPrefix+" 温度", enPrefix+" Temperature", fmt.Sprintf("%.1f C", *disk.Temperature.Celsius))
 	}
-	return strings.Join(parts, " / ")
 }
 
-func raidSummary(raid RAIDReport) string {
+func renderRAIDRows(row func(string, string, string), raid RAIDReport) {
 	if len(raid.Arrays) == 0 && len(raid.Controllers) == 0 {
-		return ""
+		return
 	}
 	degraded := 0
 	levels := make(map[string]struct{})
@@ -229,17 +249,13 @@ func raidSummary(raid RAIDReport) string {
 			drivers[controller.Driver] = struct{}{}
 		}
 	}
-	parts := []string{fmt.Sprintf("arrays %d", len(raid.Arrays)), fmt.Sprintf("controllers %d", len(raid.Controllers))}
-	if values := sortedLimitedKeys(levels, 3); len(values) > 0 {
-		parts = append(parts, "levels "+strings.Join(values, ","))
-	}
+	row("RAID阵列数量", "RAID Arrays", fmt.Sprintf("%d", len(raid.Arrays)))
+	row("RAID级别", "RAID Levels", strings.Join(sortedLimitedKeys(levels, 3), ","))
 	if degraded > 0 {
-		parts = append(parts, fmt.Sprintf("degraded %d", degraded))
+		row("RAID降级阵列", "RAID Degraded Arrays", fmt.Sprintf("%d", degraded))
 	}
-	if values := sortedLimitedKeys(drivers, 3); len(values) > 0 {
-		parts = append(parts, "drivers "+strings.Join(values, ","))
-	}
-	return strings.Join(parts, " / ")
+	row("RAID控制器数量", "RAID Controllers", fmt.Sprintf("%d", len(raid.Controllers)))
+	row("RAID驱动", "RAID Drivers", strings.Join(sortedLimitedKeys(drivers, 3), ","))
 }
 
 func formatByteTuple(values []int64) string {
@@ -265,16 +281,6 @@ func formatCompactBytes(value int64) string {
 		return fmt.Sprintf("%.0f %s", amount, units[unit])
 	}
 	return fmt.Sprintf("%.1f %s", amount, units[unit])
-}
-
-func joinValues(values ...string) string {
-	result := make([]string, 0, len(values))
-	for _, value := range values {
-		if value = strings.TrimSpace(value); value != "" {
-			result = append(result, value)
-		}
-	}
-	return strings.Join(result, " ")
 }
 
 func sortedLimitedKeys(values map[string]struct{}, limit int) []string {

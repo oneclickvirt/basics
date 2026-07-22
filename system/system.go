@@ -147,6 +147,7 @@ func GetSystemInfo() *model.SystemInfo {
 
 func CheckSystemInfo(language string) string {
 	ret := GetSystemInfo()
+	report := CollectSystemReport(context.Background())
 	var res string
 	row := func(label, value string) { res += formatReportRow(label, value) }
 	if language == "en" {
@@ -209,10 +210,11 @@ func CheckSystemInfo(language string) string {
 		if ret.NatType != "" {
 			row("NAT Type", ret.NatType)
 		}
-		if ret.TcpAccelerationMethod != "" {
-			row("Tcp Accelerate", ret.TcpAccelerationMethod)
+		tcpAcceleration := ret.TcpAccelerationMethod
+		if tcpAcceleration == "" {
+			tcpAcceleration = report.Network.CongestionControl
 		}
-		res = appendSystemReportText(res, CollectSystemReport(context.Background()), language)
+		res += renderExtendedSystemReportText(report, language, tcpAcceleration)
 
 	} else if language == "zh" {
 		row("CPU 型号", ret.CpuModel)
@@ -274,14 +276,11 @@ func CheckSystemInfo(language string) string {
 		if ret.NatType != "" {
 			row("NAT类型", ret.NatType)
 		}
-		if ret.TcpAccelerationMethod != "" {
-			row("TCP加速方式", ret.TcpAccelerationMethod)
+		tcpAcceleration := ret.TcpAccelerationMethod
+		if tcpAcceleration == "" {
+			tcpAcceleration = report.Network.CongestionControl
 		}
-		res = appendSystemReportText(res, CollectSystemReport(context.Background()), language)
+		res += renderExtendedSystemReportText(report, language, tcpAcceleration)
 	}
 	return res
-}
-
-func appendSystemReportText(legacy string, report *SystemReport, language string) string {
-	return legacy + RenderSystemReportText(report, language)
 }

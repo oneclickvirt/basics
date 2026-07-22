@@ -230,6 +230,29 @@ func TestRenderSystemReportTextIsCompactAndRedacted(t *testing.T) {
 	}
 }
 
+func TestRenderSystemReportTextAlignsLabelsByDisplayWidth(t *testing.T) {
+	report := &SystemReport{
+		Cgroup:         CgroupReport{ReportSection: ReportSection{Availability: AvailabilityAvailable}, Version: "v2"},
+		Network:        NetworkTuningReport{ReportSection: ReportSection{Availability: AvailabilityAvailable}, DefaultQdisc: "fq"},
+		Firmware:       FirmwareReport{ReportSection: ReportSection{Availability: AvailabilityAvailable}, BoardName: "Board"},
+		PCI:            PCIReport{ReportSection: ReportSection{Availability: AvailabilityAvailable}, Devices: []PCIDeviceReport{{Driver: "virtio-pci"}}},
+		MemoryTopology: MemoryTopologyReport{ReportSection: ReportSection{Availability: AvailabilityAvailable}, Nodes: []NUMANodeReport{{Node: "node0"}}},
+	}
+	text := RenderSystemReportText(report, "zh")
+	for _, line := range strings.Split(strings.TrimRight(text, "\n"), "\n") {
+		colon := strings.IndexRune(line, ':')
+		if colon < 0 {
+			t.Fatalf("summary row has no separator: %q", line)
+		}
+		if reportTextDisplayWidth(line[:colon]) != reportLabelDisplayWidth+1 {
+			t.Fatalf("summary row is not aligned: %q (display width before colon=%d)", line, reportTextDisplayWidth(line[:colon]))
+		}
+		if !strings.HasPrefix(line, " ") {
+			t.Fatalf("summary row does not reserve the first cell: %q", line)
+		}
+	}
+}
+
 func TestRAIDControllersFromPCIFindsHardwareControllers(t *testing.T) {
 	controllers := raidControllersFromPCI(PCIReport{Devices: []PCIDeviceReport{
 		{Address: "0000:03:00.0", ClassID: "0x010400", Driver: "megaraid_sas", VendorID: "0x1000", DeviceID: "0x005d"},

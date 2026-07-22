@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"unicode"
 )
+
+const reportLabelDisplayWidth = 20
 
 // RenderSystemReportText adds a compact, non-identifying summary for fields
 // that are not represented by the historical SystemInfo text.
@@ -20,9 +23,9 @@ func RenderSystemReportText(report *SystemReport, language string) string {
 			return
 		}
 		if zh {
-			fmt.Fprintf(&builder, " %-16s: %s\n", zhLabel, value)
+			builder.WriteString(formatReportRow(zhLabel, value))
 		} else {
-			fmt.Fprintf(&builder, " %-20s: %s\n", enLabel, value)
+			builder.WriteString(formatReportRow(enLabel, value))
 		}
 	}
 
@@ -40,6 +43,46 @@ func RenderSystemReportText(report *SystemReport, language string) string {
 	}
 	row("RAID", "RAID", raidSummary(report.RAID))
 	return builder.String()
+}
+
+func formatReportRow(label, value string) string {
+	padding := reportLabelDisplayWidth - reportTextDisplayWidth(label)
+	if padding < 0 {
+		padding = 0
+	}
+	return " " + label + strings.Repeat(" ", padding) + ": " + value + "\n"
+}
+
+// reportTextDisplayWidth follows the terminal width used by the compact
+// report. CJK and other wide runes occupy two cells, unlike len/rune counts.
+func reportTextDisplayWidth(value string) int {
+	width := 0
+	for _, r := range value {
+		switch {
+		case r == '\t':
+			width += 4
+		case unicode.IsControl(r):
+			continue
+		case reportRuneIsWide(r):
+			width += 2
+		default:
+			width++
+		}
+	}
+	return width
+}
+
+func reportRuneIsWide(r rune) bool {
+	return (r >= 0x1100 && r <= 0x115f) ||
+		(r >= 0x2329 && r <= 0x232a) ||
+		(r >= 0x2e80 && r <= 0xa4cf) ||
+		(r >= 0xac00 && r <= 0xd7a3) ||
+		(r >= 0xf900 && r <= 0xfaff) ||
+		(r >= 0xfe10 && r <= 0xfe19) ||
+		(r >= 0xfe30 && r <= 0xfe6f) ||
+		(r >= 0xff00 && r <= 0xff60) ||
+		(r >= 0xffe0 && r <= 0xffe6) ||
+		(r >= 0x1f300 && r <= 0x1faff)
 }
 
 func cgroupSummary(cgroup CgroupReport) string {

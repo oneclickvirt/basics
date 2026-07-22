@@ -148,35 +148,36 @@ func GetSystemInfo() *model.SystemInfo {
 func CheckSystemInfo(language string) string {
 	ret := GetSystemInfo()
 	var res string
+	row := func(label, value string) { res += formatReportRow(label, value) }
 	if language == "en" {
-		res += " CPU Model           : " + ret.CpuModel + "\n"
-		res += " CPU Cores           : " + ret.CpuCores + "\n"
+		row("CPU Model", ret.CpuModel)
+		row("CPU Cores", ret.CpuCores)
 		if ret.CpuCache != "" {
-			res += " CPU Cache           : " + ret.CpuCache + "\n"
+			row("CPU Cache", ret.CpuCache)
 		}
 		if ret.GpuModel != "" && ret.GpuModel != "unknown" {
-			res += " GPU Model           : " + ret.GpuModel + "\n"
+			row("GPU Model", ret.GpuModel)
 			if ret.GpuStats != "" && ret.GpuStats != "0" {
-				res += " GPU Stats           : " + ret.GpuStats + "\n"
+				row("GPU Stats", ret.GpuStats)
 			}
 		}
 		if runtime.GOOS != "windows" && runtime.GOOS != "darwin" {
-			res += " AES-NI              : " + ret.CpuAesNi + "\n"
+			row("AES-NI", ret.CpuAesNi)
 		}
 		if runtime.GOOS != "darwin" {
-			res += " VM-x/AMD-V/Hyper-V  : " + ret.CpuVAH + "\n"
+			row("VM-x/AMD-V/Hyper-V", ret.CpuVAH)
 		}
-		res += " RAM                 : " + ret.MemoryUsage + " / " + ret.MemoryTotal + "\n"
+		row("RAM", ret.MemoryUsage+" / "+ret.MemoryTotal)
 		if ret.VirtioBalloon != "" && runtime.GOOS != "darwin" && runtime.GOOS != "windows" {
-			res += " Virtio Balloon      : " + ret.VirtioBalloon + "\n"
+			row("Virtio Balloon", ret.VirtioBalloon)
 		}
 		if ret.KSM != "" && runtime.GOOS != "darwin" && runtime.GOOS != "windows" {
-			res += " KSM                 : " + ret.KSM + "\n"
+			row("KSM", ret.KSM)
 		}
 		if ret.SwapTotal == "" && ret.SwapUsage == "" {
-			res += " Swap                : [ no swap partition or swap file detected ]" + "\n"
+			row("Swap", "[ no swap partition or swap file detected ]")
 		} else if ret.SwapTotal != "" && ret.SwapUsage != "" {
-			res += " Swap                : " + ret.SwapUsage + " / " + ret.SwapTotal + "\n"
+			row("Swap", ret.SwapUsage+" / "+ret.SwapTotal)
 		}
 		for i := 0; i < len(ret.DiskUsage); i++ {
 			var label string
@@ -185,66 +186,63 @@ func CheckSystemInfo(language string) string {
 			} else {
 				label = fmt.Sprintf("Disk %d", i+1)
 			}
-			res += fmt.Sprintf(" %-20s: %s / %s", label, ret.DiskUsage[i], ret.DiskTotal[i])
+			value := fmt.Sprintf("%s / %s", ret.DiskUsage[i], ret.DiskTotal[i])
 			if i < len(ret.Percentage) && ret.Percentage[i] != "" {
-				res += fmt.Sprintf(" [%s]", ret.Percentage[i])
+				value += fmt.Sprintf(" [%s]", ret.Percentage[i])
 				if ret.DiskRealPath[i] != "" {
-					res += fmt.Sprintf(" %s\n", ret.DiskRealPath[i])
-				} else {
-					res += "\n"
+					value += " " + ret.DiskRealPath[i]
 				}
-			} else {
-				res += "\n"
 			}
+			row(label, value)
 		}
 		if ret.BootPath != "" {
-			res += " Boot Path           : " + ret.BootPath + "\n"
+			row("Boot Path", ret.BootPath)
 		}
-		res += " OS Release          : " + ret.Platform + " [" + ret.Arch + "] " + "\n"
+		row("OS Release", ret.Platform+" ["+ret.Arch+"]")
 		if ret.Kernel != "" {
-			res += " Kernel              : " + ret.Kernel + "\n"
+			row("Kernel", ret.Kernel)
 		}
-		res += " Uptime              : " + ret.Uptime + "\n"
-		res += " Current Time Zone   : " + ret.TimeZone + "\n"
-		res += " Load                : " + ret.Load + "\n"
-		res += " VM Type             : " + ret.VmType + "\n"
+		row("Uptime", ret.Uptime)
+		row("Current Time Zone", ret.TimeZone)
+		row("Load", ret.Load)
+		row("VM Type", ret.VmType)
 		if ret.NatType != "" {
-			res += " NAT Type            : " + ret.NatType + "\n"
+			row("NAT Type", ret.NatType)
 		}
 		if ret.TcpAccelerationMethod != "" {
-			res += " Tcp Accelerate      : " + ret.TcpAccelerationMethod + "\n"
+			row("Tcp Accelerate", ret.TcpAccelerationMethod)
 		}
 		res = appendSystemReportText(res, CollectSystemReport(context.Background()), language)
 
 	} else if language == "zh" {
-		res += " CPU 型号            : " + ret.CpuModel + "\n"
-		res += " CPU 数量            : " + ret.CpuCores + "\n"
+		row("CPU 型号", ret.CpuModel)
+		row("CPU 数量", ret.CpuCores)
 		if ret.CpuCache != "" {
-			res += " CPU 缓存            : " + ret.CpuCache + "\n"
+			row("CPU 缓存", ret.CpuCache)
 		}
 		if ret.GpuModel != "" && ret.GpuModel != "unknown" {
-			res += " GPU 型号            : " + ret.GpuModel + "\n"
+			row("GPU 型号", ret.GpuModel)
 			if ret.GpuStats != "" && ret.GpuStats != "0" {
-				res += " GPU 状态            : " + ret.GpuStats + "\n"
+				row("GPU 状态", ret.GpuStats)
 			}
 		}
 		if runtime.GOOS != "windows" && runtime.GOOS != "darwin" {
-			res += " AES-NI              : " + ret.CpuAesNi + "\n"
+			row("AES-NI", ret.CpuAesNi)
 		}
 		if runtime.GOOS != "darwin" {
-			res += " VM-x/AMD-V/Hyper-V  : " + ret.CpuVAH + "\n"
+			row("VM-x/AMD-V/Hyper-V", ret.CpuVAH)
 		}
-		res += " 内存                : " + ret.MemoryUsage + " / " + ret.MemoryTotal + "\n"
+		row("内存", ret.MemoryUsage+" / "+ret.MemoryTotal)
 		if ret.VirtioBalloon != "" && runtime.GOOS != "darwin" && runtime.GOOS != "windows" {
-			res += " 气球驱动            : " + ret.VirtioBalloon + "\n"
+			row("气球驱动", ret.VirtioBalloon)
 		}
 		if ret.KSM != "" && runtime.GOOS != "darwin" && runtime.GOOS != "windows" {
-			res += " 内核页合并          : " + ret.KSM + "\n"
+			row("内核页合并", ret.KSM)
 		}
 		if ret.SwapTotal == "" && ret.SwapUsage == "" {
-			res += " 虚拟内存 Swap       : [ no swap partition or swap file detected ]" + "\n"
+			row("虚拟内存 Swap", "[ no swap partition or swap file detected ]")
 		} else if ret.SwapTotal != "" && ret.SwapUsage != "" {
-			res += " 虚拟内存 Swap       : " + ret.SwapUsage + " / " + ret.SwapTotal + "\n"
+			row("虚拟内存 Swap", ret.SwapUsage+" / "+ret.SwapTotal)
 		}
 		for i := 0; i < len(ret.DiskUsage); i++ {
 			var label string
@@ -253,34 +251,31 @@ func CheckSystemInfo(language string) string {
 			} else {
 				label = fmt.Sprintf("硬盘空间 Disk %d", i+1)
 			}
-			res += fmt.Sprintf(" %-16s: %s / %s", label, ret.DiskUsage[i], ret.DiskTotal[i])
+			value := fmt.Sprintf("%s / %s", ret.DiskUsage[i], ret.DiskTotal[i])
 			if i < len(ret.Percentage) && ret.Percentage[i] != "" {
-				res += fmt.Sprintf(" [%s]", ret.Percentage[i])
+				value += fmt.Sprintf(" [%s]", ret.Percentage[i])
 				if ret.DiskRealPath[i] != "" {
-					res += fmt.Sprintf(" %s\n", ret.DiskRealPath[i])
-				} else {
-					res += "\n"
+					value += " " + ret.DiskRealPath[i]
 				}
-			} else {
-				res += "\n"
 			}
+			row(label, value)
 		}
 		if ret.BootPath != "" {
-			res += " 启动盘路径          : " + ret.BootPath + "\n"
+			row("启动盘路径", ret.BootPath)
 		}
-		res += " 系统                : " + ret.Platform + " [" + ret.Arch + "] " + "\n"
+		row("系统", ret.Platform+" ["+ret.Arch+"]")
 		if ret.Kernel != "" {
-			res += " 内核                : " + ret.Kernel + "\n"
+			row("内核", ret.Kernel)
 		}
-		res += " 系统在线时间        : " + ret.Uptime + "\n"
-		res += " 时区                : " + ret.TimeZone + "\n"
-		res += " 负载                : " + ret.Load + "\n"
-		res += " 虚拟化架构          : " + ret.VmType + "\n"
+		row("系统在线时间", ret.Uptime)
+		row("时区", ret.TimeZone)
+		row("负载", ret.Load)
+		row("虚拟化架构", ret.VmType)
 		if ret.NatType != "" {
-			res += " NAT类型             : " + ret.NatType + "\n"
+			row("NAT类型", ret.NatType)
 		}
 		if ret.TcpAccelerationMethod != "" {
-			res += " TCP加速方式         : " + ret.TcpAccelerationMethod + "\n"
+			row("TCP加速方式", ret.TcpAccelerationMethod)
 		}
 		res = appendSystemReportText(res, CollectSystemReport(context.Background()), language)
 	}

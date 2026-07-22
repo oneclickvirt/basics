@@ -42,3 +42,15 @@ func TestParseCLIRejectsConflictingStructuredOutputs(t *testing.T) {
 		t.Fatal("expected conflicting structured output modes to be rejected")
 	}
 }
+
+func TestParseCLIRejectsUnsupportedLanguageAndPositionalArguments(t *testing.T) {
+	for _, args := range [][]string{{"-l", "fr"}, {"unexpected"}} {
+		if _, err := parseCLI(args); err == nil {
+			t.Fatalf("expected arguments %v to be rejected", args)
+		}
+	}
+	opts, err := parseCLI([]string{"-l", " EN "})
+	if err != nil || opts.language != "en" {
+		t.Fatalf("language was not normalized: opts=%#v err=%v", opts, err)
+	}
+}

@@ -30,6 +30,13 @@ func parseCLI(args []string) (cliOptions, error) {
 	if err := fs.Parse(args); err != nil {
 		return opts, err
 	}
+	if fs.NArg() != 0 {
+		return opts, fmt.Errorf("unexpected positional arguments: %s", strings.Join(fs.Args(), " "))
+	}
+	opts.language = strings.ToLower(strings.TrimSpace(opts.language))
+	if opts.language != "" && opts.language != "en" && opts.language != "zh" {
+		return opts, fmt.Errorf("language must be en or zh")
+	}
 	if opts.timeout < 0 {
 		return opts, fmt.Errorf("timeout must not be negative")
 	}

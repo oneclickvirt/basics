@@ -209,21 +209,21 @@ func TestRenderSystemReportTextUsesOneSemanticPerRowAndRedacts(t *testing.T) {
 	for _, want := range []string{
 		"Cgroup版本", "Cgroup CPU配额", "Cgroup CPU集合", "Cgroup内存使用", "Cgroup内存上限", "Cgroup进程上限",
 		"主板厂商", "主板型号", "主板版本", "BIOS厂商", "BIOS版本", "BIOS日期",
-		"PCI设备数量", "PCI驱动", "GPU设备数量", "GPU驱动", "NUMA节点数量", "DIMM数量",
-		"HugePages总数", "HugePages空闲", "HugePage大小", "物理盘 1 协议", "物理盘 1 健康", "物理盘 1 温度",
-		"RAID阵列数量", "RAID级别", "RAID降级阵列", "RAID控制器数量", "RAID驱动", "nvme", "42.0 C",
+		"PCI设备数量", "PCI驱动", "GPU设备数量", "GPU驱动", "NUMA/DIMM", "1 / 1",
+		"HugePages", "总数 16 / 空闲 8 / 大小 2 MiB", "物理盘 1", "协议 nvme / 健康 passed / 温度 42.0 C",
+		"RAID阵列数量", "RAID级别", "RAID降级阵列", "RAID控制器数量", "RAID驱动",
 	} {
 		if !strings.Contains(text, want) {
 			t.Fatalf("report missing %q:\n%s", want, text)
 		}
 	}
 	english := RenderSystemReportText(report, "en")
-	for _, want := range []string{"Cgroup Version", "Board Vendor", "Board Name", "Board Version", "BIOS Vendor", "BIOS Version", "BIOS Date", "DIMM Count", "Disk 1 Protocol", "RAID Arrays", "RAID Controllers"} {
+	for _, want := range []string{"Cgroup Version", "Board Vendor", "Board Name", "Board Version", "BIOS Vendor", "BIOS Version", "BIOS Date", "NUMA/DIMM", "HugePages", "total 16 / free 8 / size 2 MiB", "Disk 1", "protocol nvme / health passed / temperature 42.0 C", "RAID Arrays", "RAID Controllers"} {
 		if !strings.Contains(english, want) {
 			t.Fatalf("English report missing %q:\n%s", want, english)
 		}
 	}
-	for _, forbidden := range []string{"DIMM总容量", "DIMM Total", "8 GiB", "主板/BIOS", "PCI/GPU", "内存拓扑"} {
+	for _, forbidden := range []string{"DIMM总容量", "DIMM Total", "8 GiB", "主板/BIOS", "PCI/GPU", "内存拓扑", "NUMA节点数量", "DIMM数量", "HugePages总数", "HugePages空闲", "HugePage大小", "物理盘 1 协议", "物理盘 1 健康"} {
 		if strings.Contains(text, forbidden) || strings.Contains(english, forbidden) {
 			t.Fatalf("report retained duplicate or compound field %q:\n%s\n%s", forbidden, text, english)
 		}
@@ -237,14 +237,14 @@ func TestRenderSystemReportTextUsesOneSemanticPerRowAndRedacts(t *testing.T) {
 	assertReportRowsAligned(t, english)
 	assertReportLabelOrder(t, text, []string{
 		"Cgroup版本", "主板厂商", "主板型号", "主板版本", "BIOS厂商", "BIOS版本", "BIOS日期",
-		"PCI设备数量", "PCI驱动", "GPU设备数量", "GPU驱动", "NUMA节点数量", "DIMM数量",
-		"物理盘 1 协议", "物理盘 1 健康", "物理盘 1 温度", "RAID阵列数量", "RAID级别",
+		"PCI设备数量", "PCI驱动", "GPU设备数量", "GPU驱动", "NUMA/DIMM", "HugePages",
+		"物理盘 1", "RAID阵列数量", "RAID级别",
 		"RAID降级阵列", "RAID控制器数量", "RAID驱动",
 	})
 	assertReportLabelOrder(t, english, []string{
 		"Cgroup Version", "Board Vendor", "Board Name", "Board Version", "BIOS Vendor", "BIOS Version", "BIOS Date",
-		"PCI Device Count", "PCI Drivers", "GPU Device Count", "GPU Drivers", "NUMA Node Count", "DIMM Count",
-		"Disk 1 Protocol", "Disk 1 Health", "Disk 1 Temperature", "RAID Arrays", "RAID Levels",
+		"PCI Device Count", "PCI Drivers", "GPU Device Count", "GPU Drivers", "NUMA/DIMM", "HugePages",
+		"Disk 1", "RAID Arrays", "RAID Levels",
 		"RAID Degraded Arrays", "RAID Controllers", "RAID Drivers",
 	})
 }
@@ -255,8 +255,8 @@ func TestRenderExtendedSystemReportTextOrdersTCPBeforeCgroup(t *testing.T) {
 		Cgroup:  CgroupReport{ReportSection: ReportSection{Availability: AvailabilityAvailable}, Version: "v2"},
 	}
 	for language, labels := range map[string][]string{
-		"zh": {"TCP加速方式", "TCP队列规则", "TCP接收缓冲", "TCP发送缓冲", "Cgroup版本"},
-		"en": {"Tcp Accelerate", "TCP Queue Discipline", "TCP Receive Buffer", "TCP Send Buffer", "Cgroup Version"},
+		"zh": {"TCP加速/队列", "TCP接收缓冲", "TCP发送缓冲", "Cgroup版本"},
+		"en": {"TCP Acceleration/Queue", "TCP Receive Buffer", "TCP Send Buffer", "Cgroup Version"},
 	} {
 		text := renderExtendedSystemReportText(report, language, "bbr")
 		lines := strings.Split(strings.TrimSpace(text), "\n")
@@ -281,7 +281,10 @@ func TestRenderSystemReportTextIncludesStandaloneTCPRows(t *testing.T) {
 		Cgroup: CgroupReport{ReportSection: ReportSection{Availability: AvailabilityAvailable}, Version: "v2"},
 	}
 	text := RenderSystemReportText(report, "zh")
-	assertReportLabelOrder(t, text, []string{"TCP加速方式", "TCP队列规则", "TCP接收缓冲", "TCP发送缓冲", "Cgroup版本"})
+	assertReportLabelOrder(t, text, []string{"TCP加速/队列", "TCP接收缓冲", "TCP发送缓冲", "Cgroup版本"})
+	if !strings.Contains(text, "bbr / fq") {
+		t.Fatalf("combined TCP row missing acceleration and queue: %s", text)
+	}
 }
 
 func TestRenderSystemReportTextAlignsLabelsByDisplayWidth(t *testing.T) {

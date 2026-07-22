@@ -22,6 +22,7 @@ type cliOptions struct {
 	help, version, jsonOutput, textOutput, log bool
 	language                                   string
 	timeout                                    time.Duration
+	timeoutSet                                 bool
 }
 
 func parseCLI(args []string) (cliOptions, error) {
@@ -30,6 +31,11 @@ func parseCLI(args []string) (cliOptions, error) {
 	if err := fs.Parse(args); err != nil {
 		return opts, err
 	}
+	fs.Visit(func(current *flag.Flag) {
+		if current.Name == "timeout" {
+			opts.timeoutSet = true
+		}
+	})
 	if fs.NArg() != 0 {
 		return opts, fmt.Errorf("unexpected positional arguments: %s", strings.Join(fs.Args(), " "))
 	}
@@ -42,6 +48,9 @@ func parseCLI(args []string) (cliOptions, error) {
 	}
 	if opts.jsonOutput && opts.textOutput {
 		return opts, fmt.Errorf("--json/--structured and --text are mutually exclusive")
+	}
+	if opts.timeoutSet && !opts.jsonOutput && !opts.textOutput {
+		return opts, fmt.Errorf("--timeout requires --json/--structured or --text")
 	}
 	return opts, nil
 }

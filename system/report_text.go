@@ -10,8 +10,8 @@ import (
 const reportLabelDisplayWidth = 20
 
 // RenderSystemReportText adds non-identifying fields that are not represented
-// by the historical SystemInfo text. Each row describes one property, while
-// rows for the same entity remain adjacent.
+// by the historical SystemInfo text. Closely related properties share a row;
+// separate entities and independently interpreted values remain separate.
 func RenderSystemReportText(report *SystemReport, language string) string {
 	if report == nil {
 		return ""
@@ -40,13 +40,13 @@ func renderHardwareReportText(report *SystemReport, language string) string {
 	renderCgroupRows(row, report.Cgroup)
 	renderFirmwareRows(row, report.Firmware)
 	renderPCIGPURows(row, report.PCI, report.GPUs)
-	renderMemoryTopologyRows(row, report.MemoryTopology)
+	renderMemoryTopologyRows(row, report.MemoryTopology, zh)
 	for index, disk := range report.Disks {
 		if index >= 4 {
 			row("物理盘其余", "Other Physical Disks", fmt.Sprintf("%d", len(report.Disks)-index))
 			break
 		}
-		renderDiskRows(row, index+1, disk)
+		renderDiskRows(row, index+1, disk, zh)
 	}
 	renderRAIDRows(row, report.RAID)
 	return builder.String()
@@ -56,11 +56,12 @@ func renderExtendedSystemReportText(report *SystemReport, language, tcpAccelerat
 	zh := strings.EqualFold(strings.TrimSpace(language), "zh")
 	var builder strings.Builder
 	tcpAcceleration = strings.TrimSpace(tcpAcceleration)
-	if tcpAcceleration != "" {
+	tcpQueue := strings.TrimSpace(report.Network.DefaultQdisc)
+	if value := joinReportValues(" / ", tcpAcceleration, tcpQueue); value != "" {
 		if zh {
-			builder.WriteString(formatReportRow("TCP加速方式", tcpAcceleration))
+			builder.WriteString(formatReportRow("TCP加速/队列", value))
 		} else {
-			builder.WriteString(formatReportRow("Tcp Accelerate", tcpAcceleration))
+			builder.WriteString(formatReportRow("TCP Acceleration/Queue", value))
 		}
 	}
 	builder.WriteString(renderNetworkReportText(report, language))
@@ -85,7 +86,6 @@ func renderNetworkReportText(report *SystemReport, language string) string {
 			builder.WriteString(formatReportRow(enLabel, value))
 		}
 	}
-	row("TCP队列规则", "TCP Queue Discipline", report.Network.DefaultQdisc)
 	row("TCP接收缓冲", "TCP Receive Buffer", formatByteTuple(report.Network.TCPRMem))
 	row("TCP发送缓冲", "TCP Send Buffer", formatByteTuple(report.Network.TCPWMem))
 	return builder.String()
@@ -191,24 +191,39 @@ func renderPCIGPURows(row func(string, string, string), pci PCIReport, gpus []GP
 	row("GPU驱动", "GPU Drivers", strings.Join(sortedLimitedKeys(gpuDrivers, 4), ","))
 }
 
-func renderMemoryTopologyRows(row func(string, string, string), topology MemoryTopologyReport) {
+func renderMemoryTopologyRows(row func(string, string, string), topology MemoryTopologyReport, zh bool) {
 	if topology.Availability != AvailabilityAvailable {
 		return
 	}
-	row("NUMA节点数量", "NUMA Node Count", fmt.Sprintf("%d", len(topology.Nodes)))
-	row("DIMM数量", "DIMM Count", fmt.Sprintf("%d", len(topology.DIMMs)))
+	row("NUMA/DIMM", "NUMA/DIMM", fmt.Sprintf("%d / %d", len(topology.Nodes), len(topology.DIMMs)))
+	hugePages := make([]string, 0, 3)
 	if topology.HugePagesTotal != nil {
-		row("HugePages总数", "HugePages Total", fmt.Sprintf("%d", *topology.HugePagesTotal))
+		label := "total"
+		if zh {
+			label = "总数"
+		}
+		hugePages = append(hugePages, fmt.Sprintf("%s %d", label, *topology.HugePagesTotal))
 	}
 	if topology.HugePagesFree != nil {
-		row("HugePages空闲", "HugePages Free", fmt.Sprintf("%d", *topology.HugePagesFree))
+		label := "free"
+		if zh {
+			label = "空闲"
+		}
+		hugePages = append(hugePages, fmt.Sprintf("%s %d", label, *topology.HugePagesFree))
 	}
 	if topology.HugePageBytes != nil {
-		row("HugePage大小", "HugePage Size", formatCompactBytes(*topology.HugePageBytes))
+		label := "size"
+		if zh {
+			label = "大小"
+		}
+		hugePages = append(hugePages, label+" "+formatCompactBytes(*topology.HugePageBytes))
+	}
+	if len(hugePages) > 0 {
+		row("HugePages", "HugePages", strings.Join(hugePages, " / "))
 	}
 }
 
-func renderDiskRows(row func(string, string, string), index int, disk DiskReport) {
+func renderDiskRows(row func(string, string, string), index int, disk DiskReport, zh bool) {
 	zhPrefix := fmt.Sprintf("物理盘 %d", index)
 	enPrefix := fmt.Sprintf("Disk %d", index)
 	protocol := disk.Health.Protocol
@@ -218,15 +233,45 @@ func renderDiskRows(row func(string, string, string), index int, disk DiskReport
 	if protocol == "unknown" {
 		protocol = ""
 	}
-	row(zhPrefix+" 协议", enPrefix+" Protocol", protocol)
 	health := disk.Health.Status
 	if health == "" && disk.Health.Availability != "" && disk.Health.Availability != AvailabilityAvailable {
 		health = string(disk.Health.Availability)
 	}
-	row(zhPrefix+" 健康", enPrefix+" Health", health)
-	if disk.Temperature.Celsius != nil {
-		row(zhPrefix+" 温度", enPrefix+" Temperature", fmt.Sprintf("%.1f C", *disk.Temperature.Celsius))
+	parts := make([]string, 0, 3)
+	if protocol != "" {
+		label := "protocol"
+		if zh {
+			label = "协议"
+		}
+		parts = append(parts, label+" "+protocol)
 	}
+	if health != "" {
+		label := "health"
+		if zh {
+			label = "健康"
+		}
+		parts = append(parts, label+" "+health)
+	}
+	if disk.Temperature.Celsius != nil {
+		label := "temperature"
+		if zh {
+			label = "温度"
+		}
+		parts = append(parts, fmt.Sprintf("%s %.1f C", label, *disk.Temperature.Celsius))
+	}
+	if len(parts) > 0 {
+		row(zhPrefix, enPrefix, strings.Join(parts, " / "))
+	}
+}
+
+func joinReportValues(separator string, values ...string) string {
+	parts := make([]string, 0, len(values))
+	for _, value := range values {
+		if value = strings.TrimSpace(value); value != "" {
+			parts = append(parts, value)
+		}
+	}
+	return strings.Join(parts, separator)
 }
 
 func renderRAIDRows(row func(string, string, string), raid RAIDReport) {

@@ -63,7 +63,7 @@ func TestRefreshManifestValidatesDiscoveredAddresses(t *testing.T) {
 	}
 }
 
-func TestRefreshManifestPreservesPreviousOptionalEndpoint(t *testing.T) {
+func TestRefreshManifestRetainsKnownOptionalEndpointAfterInconclusiveRefresh(t *testing.T) {
 	original := validateAddressFn
 	t.Cleanup(func() { validateAddressFn = original })
 	validateAddressFn = func(context.Context, sourceEndpoint, string, time.Duration) ([]string, error) {
@@ -81,7 +81,77 @@ func TestRefreshManifestPreservesPreviousOptionalEndpoint(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !semanticEqual(current, refreshed) || len(warnings) != 2 {
+	if len(warnings) != 2 {
 		t.Fatalf("refresh = %#v, warnings = %v", refreshed, warnings)
+	}
+	for index, wanted := range [][]string{
+		{"203.0.113.1", "203.0.113.10"},
+		{"203.0.113.2", "203.0.113.11"},
+	} {
+		got := refreshed.Endpoints[index].Addresses
+		if len(got) != len(wanted) {
+			t.Fatalf("endpoint %d addresses = %v, want %v", index, got, wanted)
+		}
+		for _, address := range wanted {
+			found := false
+			for _, value := range got {
+				if value == address {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Fatalf("endpoint %d addresses = %v, missing %s", index, got, address)
+			}
+		}
+	}
+}
+
+func TestRefreshManifestRetainsKnownAddressesAfterPartialValidation(t *testing.T) {
+	original := validateAddressFn
+	t.Cleanup(func() { validateAddressFn = original })
+	validateAddressFn = func(_ context.Context, _ sourceEndpoint, address string, _ time.Duration) ([]string, error) {
+		switch address {
+		case "203.0.113.1", "203.0.113.3":
+			return nil, nil
+		default:
+			return nil, errors.New("address unavailable from this runner")
+		}
+	}
+	sources := sourceManifest{SchemaVersion: sourceSchemaVersion, Endpoints: []sourceEndpoint{
+		{Name: "DoH", URL: "https://doh.test/dns-query", BootstrapAddresses: []string{"203.0.113.1", "203.0.113.2"}},
+		{Name: "DoT", URL: "tls://dot.test:853", BootstrapAddresses: []string{"203.0.113.3", "203.0.113.4"}},
+	}}
+	current := generatedManifest{SchemaVersion: generatedSchemaVersion, Endpoints: []generatedEndpoint{
+		{Name: "DoH", URL: "https://doh.test/dns-query", Addresses: []string{"203.0.113.10"}},
+		{Name: "DoT", URL: "tls://dot.test:853", Addresses: []string{"203.0.113.30"}},
+	}}
+	refreshed, warnings, err := refreshManifest(context.Background(), sources, current, time.Second, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(warnings) != 0 {
+		t.Fatalf("warnings = %v", warnings)
+	}
+	for index, wanted := range [][]string{
+		{"203.0.113.1", "203.0.113.2", "203.0.113.10"},
+		{"203.0.113.3", "203.0.113.4", "203.0.113.30"},
+	} {
+		got := refreshed.Endpoints[index].Addresses
+		if len(got) != len(wanted) {
+			t.Fatalf("endpoint %d addresses = %v, want %v", index, got, wanted)
+		}
+		for _, address := range wanted {
+			found := false
+			for _, value := range got {
+				if value == address {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Fatalf("endpoint %d addresses = %v, missing %s", index, got, address)
+			}
+		}
 	}
 }

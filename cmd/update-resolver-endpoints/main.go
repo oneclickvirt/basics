@@ -215,8 +215,20 @@ func refreshManifest(ctx context.Context, sources sourceManifest, current genera
 				}
 				return generatedManifest{}, warnings, fmt.Errorf("no validated address for new endpoint %s", source.URL)
 			}
-			accepted = previous.Addresses
+			accepted = append(accepted, source.BootstrapAddresses...)
+			accepted = append(accepted, previous.Addresses...)
+			accepted = cleanAddresses(accepted)
 			warnings = append(warnings, fmt.Sprintf("preserving previous addresses for %s after an inconclusive refresh", source.URL))
+		} else {
+			// A partial refresh is not enough evidence to remove a reviewed or
+			// previously validated address. For example, GitHub's IPv4-only
+			// runners cannot validate IPv6 even when it is useful to releases on
+			// dual-stack hosts. Keep known bootstrap addresses and add newly
+			// validated discoveries; a brand-new endpoint still requires a real
+			// successful TLS/DNS validation before it can enter the catalog.
+			accepted = append(accepted, source.BootstrapAddresses...)
+			accepted = append(accepted, previous.Addresses...)
+			accepted = cleanAddresses(accepted)
 		}
 		refreshed.Endpoints = append(refreshed.Endpoints, generatedEndpoint{Name: source.Name, URL: source.URL, Addresses: accepted})
 	}

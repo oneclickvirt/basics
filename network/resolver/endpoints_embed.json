@@ -1,0 +1,127 @@
+{
+  "schema_version": "goecs.resolver-endpoints/v1",
+  "generated_at": "2026-08-25T12:50:31Z",
+  "endpoints": [
+    {
+      "name": "AliDNS",
+      "url": "https://dns.alidns.com/dns-query",
+      "addresses": [
+        "223.5.5.5",
+        "223.6.6.6"
+      ]
+    },
+    {
+      "name": "AliDNS",
+      "url": "tls://dns.alidns.com:853",
+      "addresses": [
+        "223.5.5.5",
+        "223.6.6.6"
+      ]
+    },
+    {
+      "name": "DNSPod",
+      "url": "https://doh.pub/dns-query",
+      "addresses": [
+        "1.12.12.12",
+        "120.53.53.53"
+      ]
+    },
+    {
+      "name": "DNSPod",
+      "url": "tls://dot.pub:853",
+      "addresses": [
+        "1.12.12.12",
+        "120.53.53.53"
+      ]
+    },
+    {
+      "name": "360 Public DNS",
+      "url": "https://doh.360.cn/dns-query",
+      "addresses": [
+        "101.199.254.118",
+        "112.65.69.15",
+        "123.6.48.18"
+      ]
+    },
+    {
+      "name": "Cloudflare",
+      "url": "https://cloudflare-dns.com/dns-query",
+      "addresses": [
+        "1.0.0.1",
+        "1.1.1.1",
+        "2606:4700:4700::1001",
+        "2606:4700:4700::1111"
+      ]
+    },
+    {
+      "name": "Cloudflare",
+      "url": "tls://cloudflare-dns.com:853",
+      "addresses": [
+        "1.0.0.1",
+        "1.1.1.1",
+        "2606:4700:4700::1001",
+        "2606:4700:4700::1111"
+      ]
+    },
+    {
+      "name": "Google",
+      "url": "https://dns.google/dns-query",
+      "addresses": [
+        "8.8.4.4",
+        "8.8.8.8",
+        "2001:4860:4860::8844",
+        "2001:4860:4860::8888"
+      ]
+    },
+    {
+      "name": "Google",
+      "url": "tls://dns.google:853",
+      "addresses": [
+        "8.8.4.4",
+        "8.8.8.8",
+        "2001:4860:4860::8844",
+        "2001:4860:4860::8888"
+      ]
+    },
+    {
+      "name": "Quad9 Unsecured",
+      "url": "https://dns10.quad9.net/dns-query",
+      "addresses": [
+        "149.112.112.10",
+        "9.9.9.10",
+        "2620:fe::10",
+        "2620:fe::fe:10"
+      ]
+    },
+    {
+      "name": "Quad9 Unsecured",
+      "url": "tls://dns10.quad9.net:853",
+      "addresses": [
+        "149.112.112.10",
+        "9.9.9.10",
+        "2620:fe::10",
+        "2620:fe::fe:10"
+      ]
+    },
+    {
+      "name": "AdGuard Unfiltered",
+      "url": "https://unfiltered.adguard-dns.com/dns-query",
+      "addresses": [
+        "94.140.14.140",
+        "94.140.14.141",
+        "2a10:50c0::1:ff",
+        "2a10:50c0::2:ff"
+      ]
+    },
+    {
+      "name": "AdGuard Unfiltered",
+      "url": "tls://unfiltered.adguard-dns.com:853",
+      "addresses": [
+        "94.140.14.140",
+        "94.140.14.141",
+        "2a10:50c0::1:ff",
+        "2a10:50c0::2:ff"
+      ]
+    }
+  ]
+}

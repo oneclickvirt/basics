@@ -1,0 +1,69 @@
+name: Sync encrypted DNS endpoint catalog
+
+on:
+  schedule:
+    - cron: "23 3 * * *"
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/sync-resolver-endpoints.yml"
+      - "cmd/update-resolver-endpoints/**"
+      - "network/resolver/endpoints_sources.json"
+      - "network/resolver/endpoints_embed.json"
+      - "network/resolver/catalog.go"
+      - "network/resolver/catalog_test.go"
+      - "network/resolver/resolver.go"
+      - "network/resolver/upstream.go"
+      - "go.mod"
+      - "go.sum"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: basics-resolver-catalog
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          check-latest: true
+      - name: Refresh validated encrypted DNS endpoints
+        shell: bash
+        run: |
+          set -euo pipefail
+          go run ./cmd/update-resolver-endpoints \
+            -input network/resolver/endpoints_sources.json \
+            -output network/resolver/endpoints_embed.json \
+            -timeout 4s \
+            -concurrency 6
+      - name: Test catalog and resolver
+        shell: bash
+        run: |
+          set -euo pipefail
+          go test -race -count=1 ./...
+          go vet ./...
+      - name: Check generated diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+      - name: Commit semantic catalog changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$(git status --porcelain -- network/resolver/endpoints_embed.json)" ]]; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add network/resolver/endpoints_embed.json
+          git commit -m "chore: refresh encrypted DNS endpoint catalog"
+          git push

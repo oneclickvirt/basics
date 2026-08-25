@@ -1,0 +1,88 @@
+{
+  "schema_version": "goecs.resolver-endpoint-sources/v1",
+  "endpoints": [
+    {
+      "name": "AliDNS",
+      "url": "https://dns.alidns.com/dns-query",
+      "bootstrap_addresses": ["223.5.5.5", "223.6.6.6", "2400:3200::1", "2400:3200:baba::1"]
+    },
+    {
+      "name": "AliDNS",
+      "url": "tls://dns.alidns.com:853",
+      "bootstrap_addresses": ["223.5.5.5", "223.6.6.6", "2400:3200::1", "2400:3200:baba::1"]
+    },
+    {
+      "name": "DNSPod",
+      "url": "https://doh.pub/dns-query",
+      "bootstrap_addresses": ["1.12.12.12", "120.53.53.53"]
+    },
+    {
+      "name": "DNSPod",
+      "url": "tls://dot.pub:853",
+      "bootstrap_addresses": ["1.12.12.12", "120.53.53.53"]
+    },
+    {
+      "name": "360 Public DNS",
+      "url": "https://doh.360.cn/dns-query",
+      "bootstrap_addresses": ["101.199.254.118", "112.65.69.15", "123.6.48.18"]
+    },
+    {
+      "name": "DNS.SB",
+      "url": "https://doh.sb/dns-query",
+      "bootstrap_addresses": ["45.11.45.11", "185.222.222.222"],
+      "optional": true
+    },
+    {
+      "name": "DNS.SB",
+      "url": "tls://dot.sb:853",
+      "bootstrap_addresses": ["45.11.45.11", "185.222.222.222"],
+      "optional": true
+    },
+    {
+      "name": "Cloudflare",
+      "url": "https://cloudflare-dns.com/dns-query",
+      "bootstrap_addresses": ["1.1.1.1", "1.0.0.1", "2606:4700:4700::1111", "2606:4700:4700::1001"]
+    },
+    {
+      "name": "Cloudflare",
+      "url": "tls://cloudflare-dns.com:853",
+      "bootstrap_addresses": ["1.1.1.1", "1.0.0.1", "2606:4700:4700::1111", "2606:4700:4700::1001"]
+    },
+    {
+      "name": "Google",
+      "url": "https://dns.google/dns-query",
+      "bootstrap_addresses": ["8.8.8.8", "8.8.4.4", "2001:4860:4860::8888", "2001:4860:4860::8844"]
+    },
+    {
+      "name": "Google",
+      "url": "tls://dns.google:853",
+      "bootstrap_addresses": ["8.8.8.8", "8.8.4.4", "2001:4860:4860:0:0:0:0:8888", "2001:4860:4860:0:0:0:0:8844"]
+    },
+    {
+      "name": "Quad9 Unsecured",
+      "url": "https://dns10.quad9.net/dns-query",
+      "bootstrap_addresses": ["9.9.9.10", "149.112.112.10", "2620:fe::10", "2620:fe::fe:10"]
+    },
+    {
+      "name": "Quad9 Unsecured",
+      "url": "tls://dns10.quad9.net:853",
+      "bootstrap_addresses": ["9.9.9.10", "149.112.112.10", "2620:fe::10", "2620:fe::fe:10"]
+    },
+    {
+      "name": "AdGuard Unfiltered",
+      "url": "https://unfiltered.adguard-dns.com/dns-query",
+      "bootstrap_addresses": ["94.140.14.140", "94.140.14.141", "2a10:50c0::1:ff", "2a10:50c0::2:ff"]
+    },
+    {
+      "name": "AdGuard Unfiltered",
+      "url": "tls://unfiltered.adguard-dns.com:853",
+      "bootstrap_addresses": ["94.140.14.140", "94.140.14.141", "2a10:50c0::1:ff", "2a10:50c0::2:ff"]
+    },
+    {
+      "name": "TWNIC",
+      "url": "https://dns.twnic.tw/dns-query",
+      "bootstrap_addresses": ["101.101.101.101", "101.102.103.104", "2001:de4::101", "2001:de4::102"],
+      "optional": true
+    }
+  ]
+}

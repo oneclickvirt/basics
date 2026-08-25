@@ -7,10 +7,47 @@ rm -rf basics
 os=$(uname -s)
 arch=$(uname -m)
 
+# Bootstrap Cloudflare DoH with fixed public addresses when this host is online
+# but cannot use its configured system resolver. Normal curl and wget paths stay
+# first so existing installations keep their current behavior.
+DOH_URL="https://cloudflare-dns.com/dns-query"
+DOH_RESOLVE="cloudflare-dns.com:443:1.1.1.1,1.0.0.1"
+
+curl_supports_doh() {
+  command -v curl >/dev/null 2>&1 && curl --help all 2>/dev/null | grep -q -- "--doh-url"
+}
+
+curl_fetch() {
+  if curl "$@"; then
+    return 0
+  fi
+  if curl_supports_doh; then
+    curl --doh-url "$DOH_URL" --resolve "$DOH_RESOLVE" "$@"
+    return $?
+  fi
+  return 1
+}
+
+download_file() {
+  local output=$1
+  local url=$2
+  if command -v wget >/dev/null 2>&1; then
+    if wget -O "$output" "$url"; then
+      return 0
+    fi
+    echo "wget download failed, falling back to curl"
+  fi
+  if command -v curl >/dev/null 2>&1 && curl_fetch -fL -o "$output" "$url"; then
+    return 0
+  fi
+  echo "Unable to download $url" >&2
+  return 1
+}
+
 check_cdn() {
   local o_url=$1
   for cdn_url in "${cdn_urls[@]}"; do
-    if curl -sL -k "$cdn_url$o_url" --max-time 6 | grep -q "success" >/dev/null 2>&1; then
+    if curl_fetch -sL -k "$cdn_url$o_url" --max-time 6 2>/dev/null | grep -q "success" >/dev/null 2>&1; then
       export cdn_success_url="$cdn_url"
       return
     fi
@@ -35,13 +72,13 @@ case $os in
 Linux)
   case $arch in
   "x86_64" | "x86" | "amd64" | "x64")
-    wget -O basics "${cdn_success_url}https://github.com/oneclickvirt/basics/releases/download/output/basics-linux-amd64"
+    download_file basics "${cdn_success_url}https://github.com/oneclickvirt/basics/releases/download/output/basics-linux-amd64" || exit 1
     ;;
   "i386" | "i686")
-    wget -O basics "${cdn_success_url}https://github.com/oneclickvirt/basics/releases/download/output/basics-linux-386"
+    download_file basics "${cdn_success_url}https://github.com/oneclickvirt/basics/releases/download/output/basics-linux-386" || exit 1
     ;;
   "armv7l" | "armv8" | "armv8l" | "aarch64" | "arm64")
-    wget -O basics "${cdn_success_url}https://github.com/oneclickvirt/basics/releases/download/output/basics-linux-arm64"
+    download_file basics "${cdn_success_url}https://github.com/oneclickvirt/basics/releases/download/output/basics-linux-arm64" || exit 1
     ;;
   *)
     echo "Unsupported architecture: $arch"
@@ -52,13 +89,13 @@ Linux)
 Darwin)
   case $arch in
   "x86_64" | "x86" | "amd64" | "x64")
-    wget -O basics "${cdn_success_url}https://github.com/oneclickvirt/basics/releases/download/output/basics-darwin-amd64"
+    download_file basics "${cdn_success_url}https://github.com/oneclickvirt/basics/releases/download/output/basics-darwin-amd64" || exit 1
     ;;
   "i386" | "i686")
-    wget -O basics "${cdn_success_url}https://github.com/oneclickvirt/basics/releases/download/output/basics-darwin-386"
+    download_file basics "${cdn_success_url}https://github.com/oneclickvirt/basics/releases/download/output/basics-darwin-386" || exit 1
     ;;
   "armv7l" | "armv8" | "armv8l" | "aarch64" | "arm64")
-    wget -O basics "${cdn_success_url}https://github.com/oneclickvirt/basics/releases/download/output/basics-darwin-arm64"
+    download_file basics "${cdn_success_url}https://github.com/oneclickvirt/basics/releases/download/output/basics-darwin-arm64" || exit 1
     ;;
   *)
     echo "Unsupported architecture: $arch"
@@ -69,13 +106,13 @@ Darwin)
 FreeBSD)
   case $arch in
   amd64)
-    wget -O basics "${cdn_success_url}https://github.com/oneclickvirt/basics/releases/download/output/basics-freebsd-amd64"
+    download_file basics "${cdn_success_url}https://github.com/oneclickvirt/basics/releases/download/output/basics-freebsd-amd64" || exit 1
     ;;
   "i386" | "i686")
-    wget -O basics "${cdn_success_url}https://github.com/oneclickvirt/basics/releases/download/output/basics-freebsd-386"
+    download_file basics "${cdn_success_url}https://github.com/oneclickvirt/basics/releases/download/output/basics-freebsd-386" || exit 1
     ;;
   "armv7l" | "armv8" | "armv8l" | "aarch64" | "arm64")
-    wget -O basics "${cdn_success_url}https://github.com/oneclickvirt/basics/releases/download/output/basics-freebsd-arm64"
+    download_file basics "${cdn_success_url}https://github.com/oneclickvirt/basics/releases/download/output/basics-freebsd-arm64" || exit 1
     ;;
   *)
     echo "Unsupported architecture: $arch"

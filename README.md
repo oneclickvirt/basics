@@ -15,6 +15,7 @@ Include: https://github.com/oneclickvirt/gostun
 - [x] 适配```MacOS```与```Windows```系统的信息查询
 - [x] 检测GPU相关信息，参考[ghw](https://github.com/jaypipes/ghw)
 - [x] 支持自动切换为离线模式仅检测系统基础信息，不再检测网络信息
+- [x] 提供进程内 DoH/DoT 解析回退组件，供上层和独立命令在在线且系统 DNS 确认不可用时使用；不会改写系统 resolver 文件，短暂超时会保留系统解析
 - [x] 检测 CPU/cgroup、主板与 BIOS、PCI/GPU、NUMA/DIMM、HugePages、物理盘与 RAID、TCP 队列和缓冲信息
 
 ## 扩展信息说明
@@ -41,6 +42,14 @@ curl https://raw.githubusercontent.com/oneclickvirt/basics/main/basics_install.s
 curl https://cdn.spiritlhl.net/https://raw.githubusercontent.com/oneclickvirt/basics/main/basics_install.sh -sSf | bash
 ```
 
+在线但本地 DNS 不可用时，使用支持 DoH 的 curl（例如 curl 7.62+）先拉取安装脚本：
+
+```
+curl --doh-url https://cloudflare-dns.com/dns-query --resolve cloudflare-dns.com:443:1.1.1.1,1.0.0.1 -sSfL https://raw.githubusercontent.com/oneclickvirt/basics/main/basics_install.sh | bash
+```
+
+安装脚本会保留 `wget` 优先顺序；下载失败且 curl 支持 DoH 时，会自动通过内置 DoH 重试。
+
 使用
 
 ```
@@ -63,6 +72,8 @@ Usage: basics [options]
   -json   Print the structured system report as JSON
   -l string
           Set language (en or zh)
+  -dns-mode string
+          DNS mode (auto, system, doh, or dot) (default "auto")
   -log    Enable logging
   -structured
           Print the structured system report as JSON
@@ -74,6 +85,8 @@ Usage: basics [options]
 
 `-timeout` 仅用于 `-json`、`-structured` 或 `-text`，传统实时文本模式不接受该参数。
 
+`-dns-mode=auto` 默认保留系统 DNS；只有多个独立探测均确认本地解析器不可用，才会在当前进程选择经固定地址校验、实际 DNS 查询延迟最低的内置 DoH 或 DoT 上游。超时、SERVFAIL 和临时网络错误不会触发切换。`system` 禁用回退，`doh` 与 `dot` 分别强制对应的加密传输。内置地址清单由 `network/resolver/endpoints_sources.json` 定期校验后生成到 `endpoints_embed.json`；固定地址只用于引导这些上游，普通测试域名仍按实时 DNS 回应解析。
+
 ## 卸载
 
 ```
@@ -84,7 +97,7 @@ rm -rf /usr/bin/basics
 ## 在Golang中使用
 
 ```
-go get github.com/oneclickvirt/basics@v0.0.28
+go get github.com/oneclickvirt/basics@v0.0.29
 ```
 
 ## 结果展示

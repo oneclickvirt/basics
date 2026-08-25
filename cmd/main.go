@@ -14,15 +14,56 @@ import (
 
 	"github.com/oneclickvirt/basics/model"
 	"github.com/oneclickvirt/basics/network"
+	"github.com/oneclickvirt/basics/network/resolver"
 	"github.com/oneclickvirt/basics/system"
 	"github.com/oneclickvirt/basics/utils"
 )
 
 type cliOptions struct {
 	help, version, jsonOutput, textOutput, log bool
-	language                                   string
+	language, dnsMode                          string
 	timeout                                    time.Duration
 	timeoutSet                                 bool
+}
+
+var (
+	cliDNSConfigureFn          = resolver.Configure
+	cliDNSShutdownFn           = resolver.Shutdown
+	cliDNSBootstrapReachableFn = resolver.BootstrapReachable
+)
+
+func configureCLIResolver(ctx context.Context, mode resolver.Mode, preCheck *utils.NetCheckResult) resolver.Status {
+	requested := resolver.ParseMode(string(mode))
+	config := resolver.Config{Mode: requested}
+	status := resolver.Status{Requested: requested, Active: resolver.ModeUnavailable, Reason: "network unavailable"}
+	if preCheck == nil || preCheck.Connected || requested == resolver.ModeDoH || requested == resolver.ModeDoT {
+		return cliDNSConfigureFn(ctx, config)
+	}
+	if requested == resolver.ModeAuto {
+		if _, reachable := cliDNSBootstrapReachableFn(ctx, config); reachable {
+			return cliDNSConfigureFn(ctx, config)
+		}
+		status.Reason = "encrypted DNS endpoint unreachable"
+	}
+	cliDNSShutdownFn()
+	return status
+}
+
+func promoteEncryptedDNSConnectivity(preCheck *utils.NetCheckResult, status resolver.Status) {
+	if preCheck == nil || preCheck.Connected || (status.Active != resolver.ModeDoH && status.Active != resolver.ModeDoT) {
+		return
+	}
+	preCheck.Connected = true
+	switch status.Stack {
+	case "IPv4":
+		preCheck.HasIPv4 = true
+	case "IPv6":
+		preCheck.HasIPv6 = true
+	}
+	if status.Stack != "" {
+		preCheck.StackType = status.Stack
+		utils.StackType = status.Stack
+	}
 }
 
 func parseCLI(args []string) (cliOptions, error) {
@@ -42,6 +83,10 @@ func parseCLI(args []string) (cliOptions, error) {
 	opts.language = strings.ToLower(strings.TrimSpace(opts.language))
 	if opts.language != "" && opts.language != "en" && opts.language != "zh" {
 		return opts, fmt.Errorf("language must be en or zh")
+	}
+	opts.dnsMode = strings.ToLower(strings.TrimSpace(opts.dnsMode))
+	if opts.dnsMode != "auto" && opts.dnsMode != "system" && opts.dnsMode != "doh" && opts.dnsMode != "dot" {
+		return opts, fmt.Errorf("dns-mode must be auto, system, doh, or dot")
 	}
 	if opts.timeout < 0 {
 		return opts, fmt.Errorf("timeout must not be negative")
@@ -66,6 +111,7 @@ func newFlagSet(opts *cliOptions, output io.Writer) *flag.FlagSet {
 	fs.BoolVar(&opts.jsonOutput, "structured", false, "Print the structured system report as JSON")
 	fs.BoolVar(&opts.textOutput, "text", false, "Print the structured hardware summary as compact text")
 	fs.DurationVar(&opts.timeout, "timeout", 0, "Structured report timeout (for example 10s)")
+	fs.StringVar(&opts.dnsMode, "dns-mode", "auto", "DNS mode (auto, system, doh, or dot)")
 	return fs
 }
 
@@ -118,6 +164,14 @@ func main() {
 		language = "zh"
 	}
 	language = strings.ToLower(language)
+	fmt.Println("Repo:", "https://github.com/oneclickvirt/basics")
+	preCheck := utils.CheckPublicAccess(3 * time.Second)
+	mode := resolver.ParseMode(opts.dnsMode)
+	status := configureCLIResolver(context.Background(), mode, &preCheck)
+	promoteEncryptedDNSConnectivity(&preCheck, status)
+	if status.Active == resolver.ModeDoH || status.Active == resolver.ModeDoT {
+		defer cliDNSShutdownFn()
+	}
 	go func() {
 		defer func() {
 			_ = recover()
@@ -127,8 +181,6 @@ func main() {
 			_ = resp.Body.Close()
 		}
 	}()
-	fmt.Println("Repo:", "https://github.com/oneclickvirt/basics")
-	preCheck := utils.CheckPublicAccess(3 * time.Second)
 	var ipInfo string
 	if preCheck.Connected && preCheck.StackType == "DualStack" {
 		_, _, ipInfo, _, _ = network.NetworkCheck("both", false, language)

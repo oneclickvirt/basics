@@ -7,11 +7,12 @@ require (
 	github.com/jaypipes/ghw v0.17.0
 	github.com/json-iterator/go v1.1.12
 	github.com/libp2p/go-nat v0.2.0
+	github.com/miekg/dns v1.1.73
 	github.com/oneclickvirt/defaultset v0.0.2-20240624082446
 	github.com/oneclickvirt/gostun v0.0.10
 	github.com/shirou/gopsutil/v4 v4.25.6
 	github.com/yusufpapurcu/wmi v1.2.4
-	golang.org/x/sys v0.45.0
+	golang.org/x/sys v0.47.0
 )
 
 require (
@@ -46,10 +47,10 @@ require (
 	github.com/tklauser/numcpus v0.8.0 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
-	golang.org/x/crypto v0.51.0 // indirect
-	golang.org/x/net v0.55.0 // indirect
-	golang.org/x/sync v0.20.0 // indirect
-	golang.org/x/text v0.37.0 // indirect
+	golang.org/x/crypto v0.54.0 // indirect
+	golang.org/x/net v0.57.0 // indirect
+	golang.org/x/sync v0.22.0 // indirect
+	golang.org/x/text v0.40.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	howett.net/plist v1.0.0 // indirect
 )

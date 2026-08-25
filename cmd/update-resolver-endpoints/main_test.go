@@ -107,6 +107,50 @@ func TestRefreshManifestRetainsKnownOptionalEndpointAfterInconclusiveRefresh(t *
 	}
 }
 
+func TestRefreshManifestRetainsKnownRequiredEndpointAfterInconclusiveRefresh(t *testing.T) {
+	original := validateAddressFn
+	t.Cleanup(func() { validateAddressFn = original })
+	validateAddressFn = func(context.Context, sourceEndpoint, string, time.Duration) ([]string, error) {
+		return nil, errors.New("temporary network failure")
+	}
+	sources := sourceManifest{SchemaVersion: sourceSchemaVersion, Endpoints: []sourceEndpoint{
+		{Name: "DoH", URL: "https://doh.test/dns-query", BootstrapAddresses: []string{"203.0.113.1"}},
+		{Name: "DoT", URL: "tls://dot.test:853", BootstrapAddresses: []string{"203.0.113.2"}},
+	}}
+	current := generatedManifest{SchemaVersion: generatedSchemaVersion, Endpoints: []generatedEndpoint{
+		{Name: "DoH", URL: "https://doh.test/dns-query", Addresses: []string{"203.0.113.10"}},
+		{Name: "DoT", URL: "tls://dot.test:853", Addresses: []string{"203.0.113.11"}},
+	}}
+	refreshed, warnings, err := refreshManifest(context.Background(), sources, current, time.Second, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(warnings) != 2 {
+		t.Fatalf("refresh = %#v, warnings = %v", refreshed, warnings)
+	}
+	for index, wanted := range [][]string{
+		{"203.0.113.1", "203.0.113.10"},
+		{"203.0.113.2", "203.0.113.11"},
+	} {
+		got := refreshed.Endpoints[index].Addresses
+		if len(got) != len(wanted) {
+			t.Fatalf("endpoint %d addresses = %v, want %v", index, got, wanted)
+		}
+		for _, address := range wanted {
+			found := false
+			for _, value := range got {
+				if value == address {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Fatalf("endpoint %d addresses = %v, missing %s", index, got, address)
+			}
+		}
+	}
+}
+
 func TestRefreshManifestRetainsKnownAddressesAfterPartialValidation(t *testing.T) {
 	original := validateAddressFn
 	t.Cleanup(func() { validateAddressFn = original })

@@ -106,8 +106,13 @@ func TestConfigureFallsBackToDoHForDefaultHTTPDialer(t *testing.T) {
 
 func TestConfigureAutoKeepsHealthySystemResolver(t *testing.T) {
 	Shutdown()
-	t.Cleanup(Shutdown)
 	previous := net.DefaultResolver
+	healthy := healthySystemResolver(t)
+	net.DefaultResolver = healthy
+	t.Cleanup(func() {
+		Shutdown()
+		net.DefaultResolver = previous
+	})
 	var dohRequests atomic.Int32
 	doh := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		dohRequests.Add(1)
@@ -116,12 +121,11 @@ func TestConfigureAutoKeepsHealthySystemResolver(t *testing.T) {
 	defer doh.Close()
 
 	status := Configure(context.Background(), Config{
-		Mode:           ModeAuto,
-		Endpoints:      []Endpoint{{Name: "test", URL: doh.URL}},
-		SystemResolver: healthySystemResolver(t),
-		ProbeHost:      "healthy.test",
-		ProbeTimeout:   time.Second,
-		QueryTimeout:   time.Second,
+		Mode:         ModeAuto,
+		Endpoints:    []Endpoint{{Name: "test", URL: doh.URL}},
+		ProbeHost:    "healthy.test",
+		ProbeTimeout: time.Second,
+		QueryTimeout: time.Second,
 	})
 	if status.Active != ModeSystem || !status.SystemAvailable || status.Fallback {
 		t.Fatalf("status = %#v, want active system resolver", status)
@@ -129,8 +133,12 @@ func TestConfigureAutoKeepsHealthySystemResolver(t *testing.T) {
 	if got := dohRequests.Load(); got != 0 {
 		t.Fatalf("DoH requests = %d, want 0", got)
 	}
-	if net.DefaultResolver != previous {
+	if net.DefaultResolver != healthy {
 		t.Fatal("healthy system DNS unexpectedly replaced the process resolver")
+	}
+	addresses, err := net.DefaultResolver.LookupIP(context.Background(), "ip4", "healthy.test")
+	if err != nil || len(addresses) != 1 || addresses[0].String() != "192.0.2.53" {
+		t.Fatalf("healthy system lookup = %v, %v", addresses, err)
 	}
 }
 
@@ -245,12 +253,59 @@ func TestConfigureAutoKeepsSystemResolverAfterTransientTimeout(t *testing.T) {
 	}
 }
 
-func TestConfirmedLocalDNSFailureDoesNotTreatNetworkLossAsMissingDNS(t *testing.T) {
-	if isConfirmedLocalDNSFailure(errors.New("network is unreachable")) {
-		t.Fatal("network loss must remain inconclusive in auto mode")
+func TestConfirmedLocalDNSFailureIsConservative(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{name: "network loss", err: errors.New("network is unreachable")},
+		{name: "remote refusal", err: errors.New("dial udp 198.51.100.53:53: connect: connection refused")},
+		{name: "remote refusal with numeric query label", err: errors.New("lookup 127.0.0.1.example on 198.51.100.53:53: connect: connection refused")},
+		{name: "loopback refusal", err: errors.New("dial udp 127.0.0.53:53: connect: connection refused"), want: true},
+		{name: "explicit resolver unavailable", err: errors.New("system resolver unavailable"), want: true},
 	}
-	if !isConfirmedLocalDNSFailure(errors.New("system resolver unavailable")) {
-		t.Fatal("explicit local resolver unavailability must remain a confirmed failure")
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := isConfirmedLocalDNSFailure(test.err); got != test.want {
+				t.Fatalf("isConfirmedLocalDNSFailure(%v) = %t, want %t", test.err, got, test.want)
+			}
+		})
+	}
+}
+
+func TestConfigureAutoKeepsSystemResolverAfterRemoteDNSRefusal(t *testing.T) {
+	Shutdown()
+	t.Cleanup(Shutdown)
+	previous := net.DefaultResolver
+	originalConfigMissing := systemResolverConfigMissingFn
+	systemResolverConfigMissingFn = func() bool { return false }
+	t.Cleanup(func() { systemResolverConfigMissingFn = originalConfigMissing })
+	var dohRequests atomic.Int32
+	doh := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		dohRequests.Add(1)
+		t.Fatal("auto mode must not use encrypted fallback after a remote DNS refusal")
+	}))
+	defer doh.Close()
+
+	remoteRefusalResolver := &net.Resolver{PreferGo: true, Dial: func(context.Context, string, string) (net.Conn, error) {
+		return nil, errors.New("dial udp 198.51.100.53:53: connect: connection refused")
+	}}
+	status := Configure(context.Background(), Config{
+		Mode:           ModeAuto,
+		Endpoints:      []Endpoint{{Name: "test", URL: doh.URL}},
+		SystemResolver: remoteRefusalResolver,
+		ProbeTimeout:   time.Second,
+		QueryTimeout:   time.Second,
+	})
+	if status.Active != ModeSystem || status.Fallback || status.Reason != systemDNSInconclusiveReason {
+		t.Fatalf("status = %#v, want inconclusive system resolver", status)
+	}
+	if got := dohRequests.Load(); got != 0 {
+		t.Fatalf("encrypted upstream queries = %d, want 0", got)
+	}
+	if net.DefaultResolver != previous {
+		t.Fatal("remote DNS refusal unexpectedly replaced the process resolver")
 	}
 }
 

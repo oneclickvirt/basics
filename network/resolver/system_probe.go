@@ -18,6 +18,10 @@ var defaultSystemProbeHosts = []string{
 	"google.com",
 }
 
+// systemResolverConfigMissingFn is kept as a variable so resolver tests can
+// exercise probe classifications without depending on the host's DNS setup.
+var systemResolverConfigMissingFn = unixResolverConfigMissing
+
 type systemProbeResult uint8
 
 const (
@@ -76,7 +80,7 @@ func (resolver *Resolver) probeSystem(ctx context.Context) systemProbeResult {
 	if len(hosts) > 0 && hardFailures == len(hosts) {
 		return systemProbeUnavailable
 	}
-	if unixResolverConfigMissing() && hardFailures+inconclusiveFailures == len(hosts) {
+	if systemResolverConfigMissingFn() && hardFailures+inconclusiveFailures == len(hosts) {
 		return systemProbeUnavailable
 	}
 	return systemProbeInconclusive
@@ -124,10 +128,36 @@ func isConfirmedLocalDNSFailure(err error) bool {
 	if dnsErr != nil {
 		message = strings.ToLower(dnsErr.Err + " " + message)
 	}
-	return strings.Contains(message, "connection refused") ||
+	return isLoopbackResolverRefusal(message) ||
 		strings.Contains(message, "no dns servers") ||
 		strings.Contains(message, "resolver unavailable") ||
 		strings.Contains(message, "error reading dns config")
+}
+
+// isLoopbackResolverRefusal accepts only errors that identify a local DNS
+// stub. A refusal from a remote resolver can also be caused by packet loss,
+// filtering, or a transient upstream condition, so auto mode must retain the
+// system resolver in that case.
+func isLoopbackResolverRefusal(message string) bool {
+	if !strings.Contains(message, "connection refused") {
+		return false
+	}
+	for _, candidate := range strings.FieldsFunc(message, func(r rune) bool {
+		return !((r >= '0' && r <= '9') ||
+			(r >= 'a' && r <= 'f') ||
+			(r >= 'A' && r <= 'F') ||
+			r == '.' || r == ':' || r == '[' || r == ']')
+	}) {
+		candidate = strings.TrimRight(candidate, ":")
+		if host, port, err := net.SplitHostPort(candidate); err == nil && port != "" {
+			candidate = host
+		}
+		candidate = strings.Trim(candidate, "[]")
+		if address := net.ParseIP(candidate); address != nil && address.IsLoopback() {
+			return true
+		}
+	}
+	return false
 }
 
 func unixResolverConfigMissing() bool {

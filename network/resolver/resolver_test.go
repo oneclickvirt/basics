@@ -282,9 +282,9 @@ func TestConfigureAutoKeepsSystemResolverAfterRemoteDNSRefusal(t *testing.T) {
 	systemResolverConfigMissingFn = func() bool { return false }
 	t.Cleanup(func() { systemResolverConfigMissingFn = originalConfigMissing })
 	var dohRequests atomic.Int32
-	doh := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+	doh := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 		dohRequests.Add(1)
-		t.Fatal("auto mode must not use encrypted fallback after a remote DNS refusal")
+		http.Error(writer, "auto mode must not use encrypted fallback after a remote DNS refusal", http.StatusInternalServerError)
 	}))
 	defer doh.Close()
 

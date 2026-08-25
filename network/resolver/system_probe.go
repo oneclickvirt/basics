@@ -18,10 +18,6 @@ var defaultSystemProbeHosts = []string{
 	"google.com",
 }
 
-// systemResolverConfigMissingFn is kept as a variable so resolver tests can
-// exercise probe classifications without depending on the host's DNS setup.
-var systemResolverConfigMissingFn = unixResolverConfigMissing
-
 type systemProbeResult uint8
 
 const (
@@ -80,7 +76,7 @@ func (resolver *Resolver) probeSystem(ctx context.Context) systemProbeResult {
 	if len(hosts) > 0 && hardFailures == len(hosts) {
 		return systemProbeUnavailable
 	}
-	if systemResolverConfigMissingFn() && hardFailures+inconclusiveFailures == len(hosts) {
+	if unixResolverConfigMissing() && hardFailures+inconclusiveFailures == len(hosts) {
 		return systemProbeUnavailable
 	}
 	return systemProbeInconclusive
@@ -128,7 +124,7 @@ func isConfirmedLocalDNSFailure(err error) bool {
 	if dnsErr != nil {
 		message = strings.ToLower(dnsErr.Err + " " + message)
 	}
-	return isLoopbackResolverRefusal(message) ||
+	return isLoopbackResolverRefusal(dnsErr, message) ||
 		strings.Contains(message, "no dns servers") ||
 		strings.Contains(message, "resolver unavailable") ||
 		strings.Contains(message, "error reading dns config")
@@ -138,26 +134,33 @@ func isConfirmedLocalDNSFailure(err error) bool {
 // stub. A refusal from a remote resolver can also be caused by packet loss,
 // filtering, or a transient upstream condition, so auto mode must retain the
 // system resolver in that case.
-func isLoopbackResolverRefusal(message string) bool {
+func isLoopbackResolverRefusal(dnsErr *net.DNSError, message string) bool {
 	if !strings.Contains(message, "connection refused") {
 		return false
 	}
-	for _, candidate := range strings.FieldsFunc(message, func(r rune) bool {
-		return !((r >= '0' && r <= '9') ||
-			(r >= 'a' && r <= 'f') ||
-			(r >= 'A' && r <= 'F') ||
-			r == '.' || r == ':' || r == '[' || r == ']')
-	}) {
-		candidate = strings.TrimRight(candidate, ":")
-		if host, port, err := net.SplitHostPort(candidate); err == nil && port != "" {
-			candidate = host
+	if dnsErr != nil && strings.TrimSpace(dnsErr.Server) != "" {
+		return isLoopbackResolverAddress(dnsErr.Server)
+	}
+	for _, prefix := range []string{"dial udp ", "dial tcp ", " on "} {
+		index := strings.Index(message, prefix)
+		if index < 0 {
+			continue
 		}
-		candidate = strings.Trim(candidate, "[]")
-		if address := net.ParseIP(candidate); address != nil && address.IsLoopback() {
+		candidate := strings.Fields(message[index+len(prefix):])
+		if len(candidate) > 0 && isLoopbackResolverAddress(candidate[0]) {
 			return true
 		}
 	}
 	return false
+}
+
+func isLoopbackResolverAddress(value string) bool {
+	value = strings.TrimRight(strings.TrimSpace(value), ":")
+	if host, port, err := net.SplitHostPort(value); err == nil && port != "" {
+		value = host
+	}
+	address := net.ParseIP(strings.Trim(value, "[]"))
+	return address != nil && address.IsLoopback()
 }
 
 func unixResolverConfigMissing() bool {

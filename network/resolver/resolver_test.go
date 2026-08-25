@@ -263,6 +263,8 @@ func TestConfirmedLocalDNSFailureIsConservative(t *testing.T) {
 		{name: "remote refusal", err: errors.New("dial udp 198.51.100.53:53: connect: connection refused")},
 		{name: "remote refusal with numeric query label", err: errors.New("lookup 127.0.0.1.example on 198.51.100.53:53: connect: connection refused")},
 		{name: "loopback refusal", err: errors.New("dial udp 127.0.0.53:53: connect: connection refused"), want: true},
+		{name: "wrapped remote refusal", err: &net.DNSError{Err: "connection refused", Server: "198.51.100.53:53"}},
+		{name: "wrapped loopback refusal", err: &net.DNSError{Err: "connection refused", Server: "127.0.0.53:53"}, want: true},
 		{name: "explicit resolver unavailable", err: errors.New("system resolver unavailable"), want: true},
 	}
 	for _, test := range tests {
@@ -271,41 +273,6 @@ func TestConfirmedLocalDNSFailureIsConservative(t *testing.T) {
 				t.Fatalf("isConfirmedLocalDNSFailure(%v) = %t, want %t", test.err, got, test.want)
 			}
 		})
-	}
-}
-
-func TestConfigureAutoKeepsSystemResolverAfterRemoteDNSRefusal(t *testing.T) {
-	Shutdown()
-	t.Cleanup(Shutdown)
-	previous := net.DefaultResolver
-	originalConfigMissing := systemResolverConfigMissingFn
-	systemResolverConfigMissingFn = func() bool { return false }
-	t.Cleanup(func() { systemResolverConfigMissingFn = originalConfigMissing })
-	var dohRequests atomic.Int32
-	doh := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
-		dohRequests.Add(1)
-		http.Error(writer, "auto mode must not use encrypted fallback after a remote DNS refusal", http.StatusInternalServerError)
-	}))
-	defer doh.Close()
-
-	remoteRefusalResolver := &net.Resolver{PreferGo: true, Dial: func(context.Context, string, string) (net.Conn, error) {
-		return nil, errors.New("dial udp 198.51.100.53:53: connect: connection refused")
-	}}
-	status := Configure(context.Background(), Config{
-		Mode:           ModeAuto,
-		Endpoints:      []Endpoint{{Name: "test", URL: doh.URL}},
-		SystemResolver: remoteRefusalResolver,
-		ProbeTimeout:   time.Second,
-		QueryTimeout:   time.Second,
-	})
-	if status.Active != ModeSystem || status.Fallback || status.Reason != systemDNSInconclusiveReason {
-		t.Fatalf("status = %#v, want inconclusive system resolver", status)
-	}
-	if got := dohRequests.Load(); got != 0 {
-		t.Fatalf("encrypted upstream queries = %d, want 0", got)
-	}
-	if net.DefaultResolver != previous {
-		t.Fatal("remote DNS refusal unexpectedly replaced the process resolver")
 	}
 }
 

@@ -50,8 +50,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          go test -race -count=1 ./...
-          go vet ./...
+          if ! go test -race -count=1 ./... > resolver-test.log 2>&1; then
+            cat resolver-test.log
+            details="$(tail -n 40 resolver-test.log | sed -e 's/%/%25/g' -e 's/\r/%0D/g' | tr '\n' ' ')"
+            echo "::error title=Resolver catalog tests failed::${details}"
+            exit 1
+          fi
+          if ! go vet ./... > resolver-vet.log 2>&1; then
+            cat resolver-vet.log
+            details="$(tail -n 40 resolver-vet.log | sed -e 's/%/%25/g' -e 's/\r/%0D/g' | tr '\n' ' ')"
+            echo "::error title=Resolver catalog vet failed::${details}"
+            exit 1
+          fi
       - name: Check generated diff
         shell: bash
         run: |

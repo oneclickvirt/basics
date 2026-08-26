@@ -27,3 +27,16 @@ func TestEmbeddedCatalogContainsBootstrappedDoHAndDoT(t *testing.T) {
 		t.Fatalf("embedded transports: DoH=%t DoT=%t", hasDoH, hasDoT)
 	}
 }
+
+func TestFallbackCatalogRetainsValidated360DoT(t *testing.T) {
+	manifest := fallbackEndpointManifest()
+	for _, endpoint := range manifest.Endpoints {
+		if endpoint.Name == "360 Public DNS" && endpoint.URL == "tls://dot.360.cn:853" {
+			if len(endpoint.Addresses) == 0 {
+				t.Fatal("fallback 360 DoT endpoint has no bootstrap addresses")
+			}
+			return
+		}
+	}
+	t.Fatal("fallback catalog is missing validated 360 DoT endpoint")
+}

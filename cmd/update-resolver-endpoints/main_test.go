@@ -27,6 +27,35 @@ func TestRepositorySourceManifestContainsBothEncryptedTransports(t *testing.T) {
 	}
 }
 
+func TestRepositorySourceManifestIncludesReviewedProviderFamilies(t *testing.T) {
+	manifest, err := readSourceManifest(filepath.FromSlash("../../network/resolver/endpoints_sources.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	wanted := map[string]bool{
+		"AliDNS":             false,
+		"DNSPod":             false,
+		"360 Public DNS":     false,
+		"DNS.SB":             false,
+		"Cloudflare":         false,
+		"Google":             false,
+		"Quad9 Unsecured":    false,
+		"OpenDNS":            false,
+		"AdGuard Unfiltered": false,
+		"TWNIC":              false,
+	}
+	for _, endpoint := range manifest.Endpoints {
+		if _, ok := wanted[endpoint.Name]; ok {
+			wanted[endpoint.Name] = true
+		}
+	}
+	for name, found := range wanted {
+		if !found {
+			t.Fatalf("reviewed resolver family %q is missing from the source catalog", name)
+		}
+	}
+}
+
 func TestRefreshManifestValidatesDiscoveredAddresses(t *testing.T) {
 	original := validateAddressFn
 	t.Cleanup(func() { validateAddressFn = original })

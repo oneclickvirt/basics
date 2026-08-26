@@ -27,6 +27,12 @@
       "bootstrap_addresses": ["101.199.254.118", "112.65.69.15", "123.6.48.18"]
     },
     {
+      "name": "360 Public DNS",
+      "url": "tls://dot.360.cn:853",
+      "bootstrap_addresses": ["101.199.254.118", "112.65.69.15", "123.6.48.18"],
+      "optional": true
+    },
+    {
       "name": "DNS.SB",
       "url": "https://doh.sb/dns-query",
       "bootstrap_addresses": ["45.11.45.11", "185.222.222.222"],
@@ -67,6 +73,18 @@
       "name": "Quad9 Unsecured",
       "url": "tls://dns10.quad9.net:853",
       "bootstrap_addresses": ["9.9.9.10", "149.112.112.10", "2620:fe::10", "2620:fe::fe:10"]
+    },
+    {
+      "name": "OpenDNS",
+      "url": "https://doh.opendns.com/dns-query",
+      "bootstrap_addresses": ["146.112.41.2"],
+      "optional": true
+    },
+    {
+      "name": "OpenDNS",
+      "url": "tls://dns.umbrella.com:853",
+      "bootstrap_addresses": ["208.67.220.220", "208.67.222.222"],
+      "optional": true
     },
     {
       "name": "AdGuard Unfiltered",

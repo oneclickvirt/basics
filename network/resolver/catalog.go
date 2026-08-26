@@ -205,6 +205,7 @@ func fallbackEndpointManifest() endpointManifest {
 		{Name: "DNSPod", URL: "https://doh.pub/dns-query", Addresses: []string{"1.12.12.12", "120.53.53.53"}},
 		{Name: "DNSPod", URL: "tls://dot.pub:853", Addresses: []string{"1.12.12.12", "120.53.53.53"}},
 		{Name: "360 Public DNS", URL: "https://doh.360.cn/dns-query", Addresses: []string{"101.199.254.118", "112.65.69.15", "123.6.48.18"}},
+		{Name: "360 Public DNS", URL: "tls://dot.360.cn:853", Addresses: []string{"101.199.254.118", "112.65.69.15", "123.6.48.18"}},
 		{Name: "Cloudflare", URL: "https://cloudflare-dns.com/dns-query", Addresses: []string{"1.1.1.1", "1.0.0.1"}},
 		{Name: "Cloudflare", URL: "tls://cloudflare-dns.com:853", Addresses: []string{"1.1.1.1", "1.0.0.1"}},
 		{Name: "Google", URL: "https://dns.google/dns-query", Addresses: []string{"8.8.8.8", "8.8.4.4"}},

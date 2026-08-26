@@ -1,6 +1,6 @@
 {
   "schema_version": "goecs.resolver-endpoints/v1",
-  "generated_at": "2026-08-25T13:36:29Z",
+  "generated_at": "2026-08-26T02:15:59Z",
   "endpoints": [
     {
       "name": "AliDNS",
@@ -44,6 +44,15 @@
       "addresses": [
         "101.198.192.33",
         "101.198.193.29",
+        "101.199.254.118",
+        "112.65.69.15",
+        "123.6.48.18"
+      ]
+    },
+    {
+      "name": "360 Public DNS",
+      "url": "tls://dot.360.cn:853",
+      "addresses": [
         "101.199.254.118",
         "112.65.69.15",
         "123.6.48.18"

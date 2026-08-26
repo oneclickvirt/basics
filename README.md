@@ -85,7 +85,7 @@ Usage: basics [options]
 
 `-timeout` 仅用于 `-json`、`-structured` 或 `-text`，传统实时文本模式不接受该参数。
 
-`-dns-mode=auto` 默认保留系统 DNS；只有多个独立探测均确认本地解析器不可用，才会在当前进程选择经固定地址校验、实际 DNS 查询延迟最低的内置 DoH 或 DoT 上游。超时、SERVFAIL 和临时网络错误不会触发切换。`system` 禁用回退，`doh` 与 `dot` 分别强制对应的加密传输。内置地址清单由 `network/resolver/endpoints_sources.json` 定期校验后生成到 `endpoints_embed.json`；固定地址只用于引导这些上游，普通测试域名仍按实时 DNS 回应解析。
+`-dns-mode=auto` 默认保留系统 DNS；只有多个独立探测均确认本地解析器不可用，才会在当前进程选择经固定地址校验、实际 DNS 查询延迟最低的内置 DoH 或 DoT 上游。超时、SERVFAIL 和临时网络错误不会触发切换。`system` 禁用回退，`doh` 与 `dot` 分别强制对应的加密传输。内置地址清单由 `network/resolver/endpoints_sources.json` 定期校验后生成到 `endpoints_embed.json`；候选覆盖 AliDNS、DNSPod、360、DNS.SB、Cloudflare、Google、Quad9、OpenDNS、AdGuard 和 TWNIC，只有真实 TLS/DNS 查询验证成功的服务会进入嵌入清单。固定地址只用于引导这些上游，普通测试域名仍按实时 DNS 回应解析；纯 UDP/TCP DNS 不会在 `auto` 中静默降级，以保留加密与解析策略边界。
 
 ## 卸载
 
@@ -97,7 +97,7 @@ rm -rf /usr/bin/basics
 ## 在Golang中使用
 
 ```
-go get github.com/oneclickvirt/basics@v0.0.31
+go get github.com/oneclickvirt/basics@v0.0.32
 ```
 
 ## 结果展示

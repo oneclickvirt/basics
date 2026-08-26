@@ -2,10 +2,14 @@ package baseinfo
 
 import (
 	"fmt"
+	"os"
 	"testing"
 )
 
 func TestNeighborCount(t *testing.T) {
+	if os.Getenv("BASICS_INTEGRATION") != "1" {
+		t.Skip("set BASICS_INTEGRATION=1 to run live neighbor checks")
+	}
 	ip := "207.174.22.39" // 示例 IP
 	neighborActive, neighborTotal, err := GetActiveIpsCount(MaskIP(ip), 24)
 	if err != nil {

@@ -3,6 +3,7 @@ package baseinfo
 import (
 	"fmt"
 	"github.com/oneclickvirt/basics/model"
+	"os"
 	"testing"
 	"time"
 )
@@ -26,6 +27,9 @@ func printIPInfo(ipInfo *model.IpInfo, err error) {
 }
 
 func TestIPInfo(t *testing.T) {
+	if os.Getenv("BASICS_INTEGRATION") != "1" {
+		t.Skip("set BASICS_INTEGRATION=1 to run live IP information checks")
+	}
 	// Test for IPv4
 	fmt.Println("IPv4 Testing:")
 	startV4 := time.Now()
@@ -56,7 +60,7 @@ func TestIPInfo(t *testing.T) {
 	if err == nil {
 		fmt.Println("IPv4:")
 		fmt.Println("------")
-		printIPInfo(ipInfoV4Result,nil)
+		printIPInfo(ipInfoV4Result, nil)
 		fmt.Println("IPv6:")
 		fmt.Println("------")
 		printIPInfo(ipInfoV6Result, nil)

@@ -1,6 +1,6 @@
 {
   "schema_version": "goecs.resolver-endpoints/v1",
-  "generated_at": "2026-08-26T02:15:59Z",
+  "generated_at": "2026-08-26T02:33:47Z",
   "endpoints": [
     {
       "name": "AliDNS",
@@ -53,6 +53,7 @@
       "name": "360 Public DNS",
       "url": "tls://dot.360.cn:853",
       "addresses": [
+        "101.198.192.33",
         "101.199.254.118",
         "112.65.69.15",
         "123.6.48.18"
@@ -134,6 +135,21 @@
         "9.9.9.10",
         "2620:fe::10",
         "2620:fe::fe:10"
+      ]
+    },
+    {
+      "name": "OpenDNS",
+      "url": "https://doh.opendns.com/dns-query",
+      "addresses": [
+        "146.112.41.2"
+      ]
+    },
+    {
+      "name": "OpenDNS",
+      "url": "tls://dns.umbrella.com:853",
+      "addresses": [
+        "208.67.220.220",
+        "208.67.222.222"
       ]
     },
     {

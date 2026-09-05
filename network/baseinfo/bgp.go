@@ -2,6 +2,7 @@ package baseinfo
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"image/color"
@@ -27,7 +28,11 @@ func GetCIDRPrefix(ip string) (string, int) {
 	}
 	client := req.C()
 	client.ImpersonateChrome()
-	client.SetTimeout(6 * time.Second)
+	client.SetTimeout(6 * time.Second).SetDial(func(ctx context.Context, _ string, addr string) (net.Conn, error) {
+		// BGP prefix and activity endpoints are IPv4-only data paths. Do not let
+		// a dual-stack resolver preference silently turn these requests into IPv6.
+		return (&net.Dialer{Timeout: 4 * time.Second, KeepAlive: 30 * time.Second}).DialContext(ctx, "tcp4", addr)
+	})
 	cidrIp, cidrPrefix, err := fetchCIDRFromBGPToolsAndHe(client, ip)
 	if err == nil && cidrPrefix > 0 {
 		return cidrIp, cidrPrefix
@@ -147,6 +152,9 @@ func GetActiveIpsCount(ip string, prefixNum int) (int, int, error) {
 	}
 	client := req.C()
 	client.ImpersonateChrome()
+	client.SetTimeout(6 * time.Second).SetDial(func(ctx context.Context, _ string, addr string) (net.Conn, error) {
+		return (&net.Dialer{Timeout: 4 * time.Second, KeepAlive: 30 * time.Second}).DialContext(ctx, "tcp4", addr)
+	})
 	cidrBase := fmt.Sprintf("%s/%d", ip, prefixNum)
 	total := int(math.Pow(2, float64(32-prefixNum)))
 	active, err := countActiveIPs(client, fmt.Sprintf("https://bgp.tools/pfximg/%s", cidrBase), total)

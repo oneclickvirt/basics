@@ -20,16 +20,21 @@ import (
 // additionalHeader 参数表示传入的额外的请求头信息(用于传输api的key)。
 // 返回一个解析 json 得到的 map 和 一个可能发生的错误 。
 func FetchJsonFromURL(url, netType string, enableHeader bool, additionalHeader string) (map[string]interface{}, error) {
-	if netType != "tcp4" && netType != "tcp6" {
-		return nil, fmt.Errorf("Invalid netType: %s. Expected 'tcp4' or 'tcp6'.", netType)
+	netType, err := NormalizeNetwork(netType)
+	if err != nil {
+		return nil, err
 	}
 	client := req.C()
+	dialNetwork := netType
+	if dialNetwork == "" {
+		dialNetwork = "tcp"
+	}
 	client.SetTimeout(12 * time.Second).
 		SetDial(func(ctx context.Context, network, addr string) (net.Conn, error) {
 			return (&net.Dialer{
 				Timeout:   6 * time.Second,
 				KeepAlive: 30 * time.Second,
-			}).DialContext(ctx, netType, addr)
+			}).DialContext(ctx, dialNetwork, addr)
 		}).
 		SetTLSHandshakeTimeout(5 * time.Second).
 		SetResponseHeaderTimeout(10 * time.Second).
@@ -41,7 +46,7 @@ func FetchJsonFromURL(url, netType string, enableHeader bool, additionalHeader s
 		SetRetryCount(3).
 		SetRetryBackoffInterval(2*time.Second, 5*time.Second).
 		SetRetryHook(func(resp *req.Response, err error) {
-			if err != nil && (strings.Contains(err.Error(), "timeout") || 
+			if err != nil && (strings.Contains(err.Error(), "timeout") ||
 				strings.Contains(err.Error(), "http2")) {
 			}
 		})
@@ -71,6 +76,40 @@ func FetchJsonFromURL(url, netType string, enableHeader bool, additionalHeader s
 		return nil, fmt.Errorf("Error decoding %s info: %v", url, err)
 	}
 	return data, nil
+}
+
+// NormalizeNetwork validates an optional IP-family selector. An empty value,
+// "auto", and "tcp" preserve the standard library's normal dual-stack
+// behavior; tcp4/tcp6 make the caller's family intent explicit.
+func NormalizeNetwork(network string) (string, error) {
+	network = strings.ToLower(strings.TrimSpace(network))
+	switch network {
+	case "", "auto", "tcp":
+		return "", nil
+	case "tcp4", "ipv4", "4":
+		return "tcp4", nil
+	case "tcp6", "ipv6", "6":
+		return "tcp6", nil
+	default:
+		return "", fmt.Errorf("invalid network: %s (expected auto, tcp4, or tcp6)", network)
+	}
+}
+
+// DialContext returns a family-aware dial function suitable for
+// http.Transport, req.Client, and other request wrappers. The automatic form
+// delegates to net.Dialer unchanged so pure IPv6 callers remain supported.
+func DialContext(network string) (func(context.Context, string, string) (net.Conn, error), error) {
+	network, err := NormalizeNetwork(network)
+	if err != nil {
+		return nil, err
+	}
+	dialer := &net.Dialer{Timeout: 6 * time.Second, KeepAlive: 30 * time.Second}
+	if network == "" {
+		return dialer.DialContext, nil
+	}
+	return func(ctx context.Context, _ string, address string) (net.Conn, error) {
+		return dialer.DialContext(ctx, network, address)
+	}, nil
 }
 
 // BoolToString 将布尔值转换为对应的字符串表示，true 则返回 "Yes"，false 则返回 "No"

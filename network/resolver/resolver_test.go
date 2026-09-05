@@ -107,12 +107,15 @@ func TestConfigureFallsBackToDoHForDefaultHTTPDialer(t *testing.T) {
 func TestConfigureAutoKeepsHealthySystemResolver(t *testing.T) {
 	Shutdown()
 	previous := net.DefaultResolver
-	healthy := healthySystemResolver(t)
-	net.DefaultResolver = healthy
 	t.Cleanup(func() {
 		Shutdown()
 		net.DefaultResolver = previous
 	})
+	// Register the process-resolver restoration before the fixture cleanup so
+	// the DNS listener is closed first. This prevents a lingering stdlib DNS
+	// lookup goroutine from racing the global resolver assignment under -race.
+	healthy := healthySystemResolver(t)
+	net.DefaultResolver = healthy
 	var dohRequests atomic.Int32
 	doh := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		dohRequests.Add(1)

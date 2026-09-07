@@ -524,6 +524,11 @@ func healthySystemResolver(t *testing.T) *net.Resolver {
 	})
 	address := packetConn.LocalAddr().String()
 	return &net.Resolver{PreferGo: true, Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
-		return (&net.Dialer{}).DialContext(ctx, network, address)
+		// Bind the fixture dialer to an explicit resolver. A zero-value
+		// net.Dialer consults the mutable process-wide net.DefaultResolver,
+		// which can race the test cleanup while Go's parallel DNS lookup
+		// goroutines are winding down.
+		dialer := &net.Dialer{Resolver: &net.Resolver{PreferGo: true}}
+		return dialer.DialContext(ctx, network, address)
 	}}
 }

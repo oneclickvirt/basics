@@ -14,6 +14,8 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -523,12 +525,25 @@ func healthySystemResolver(t *testing.T) *net.Resolver {
 		_ = packetConn.Close()
 	})
 	address := packetConn.LocalAddr().String()
+	_, port, err := net.SplitHostPort(address)
+	if err != nil {
+		t.Fatal(err)
+	}
+	portNumber, err := strconv.Atoi(port)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The resolver's Dial callback receives a numeric loopback endpoint. Use
+	// the UDP constructor directly so this fixture never consults the mutable
+	// process-wide net.DefaultResolver while the test is being cleaned up.
+	localDNSAddress := &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1), Port: portNumber}
 	return &net.Resolver{PreferGo: true, Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
-		// Bind the fixture dialer to an explicit resolver. A zero-value
-		// net.Dialer consults the mutable process-wide net.DefaultResolver,
-		// which can race the test cleanup while Go's parallel DNS lookup
-		// goroutines are winding down.
-		dialer := &net.Dialer{Resolver: &net.Resolver{PreferGo: true}}
-		return dialer.DialContext(ctx, network, address)
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		if !strings.HasPrefix(network, "udp") {
+			return nil, errors.New("test DNS fixture only supports UDP")
+		}
+		return net.DialUDP("udp4", nil, localDNSAddress)
 	}}
 }

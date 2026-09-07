@@ -38,6 +38,41 @@ func makeResolver(proto, dnsAddr string) *net.Resolver {
 	}
 }
 
+// familyDialContext keeps the connection family independent from the order in
+// which a resolver returns A and AAAA records. http.Transport asks its dialer
+// for the generic "tcp" network; forwarding that unchanged would allow a
+// dual-stack host whose resolver prefers AAAA to satisfy an IPv4 health check
+// over IPv6. The DNS transport and the destination TCP connection therefore
+// use the same explicit family.
+func familyDialContext(dial func(context.Context, string, string) (net.Conn, error), family string) func(context.Context, string, string) (net.Conn, error) {
+	return func(ctx context.Context, _ string, address string) (net.Conn, error) {
+		return dial(ctx, family, address)
+	}
+}
+
+func newFamilyHTTPClient(family string, resolver *net.Resolver, timeout time.Duration) *http.Client {
+	dialer := &net.Dialer{
+		Timeout:  timeout,
+		Resolver: resolver,
+	}
+	transport := &http.Transport{
+		DialContext:           familyDialContext(dialer.DialContext, family),
+		MaxIdleConns:          1,
+		MaxIdleConnsPerHost:   1,
+		IdleConnTimeout:       time.Second,
+		TLSHandshakeTimeout:   timeout,
+		ResponseHeaderTimeout: timeout,
+		DisableKeepAlives:     true,
+	}
+	return &http.Client{
+		Timeout:   timeout,
+		Transport: transport,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+}
+
 func CheckPublicAccess(timeout time.Duration) NetCheckResult {
 	if timeout < 2*time.Second {
 		timeout = 2 * time.Second
@@ -82,31 +117,14 @@ func CheckPublicAccess(timeout time.Duration) NetCheckResult {
 					}
 				case "http4", "http6":
 					var resolver *net.Resolver
+					family := "tcp4"
 					if kind == "http4" {
 						resolver = makeResolver("udp4", "223.5.5.5:53")
 					} else {
 						resolver = makeResolver("udp6", "[2400:3200::1]:53")
+						family = "tcp6"
 					}
-					dialer := &net.Dialer{
-						Timeout:  timeout / 4,
-						Resolver: resolver,
-					}
-					transport := &http.Transport{
-						DialContext:           dialer.DialContext,
-						MaxIdleConns:          1,
-						MaxIdleConnsPerHost:   1,
-						IdleConnTimeout:       time.Second,
-						TLSHandshakeTimeout:   timeout / 4,
-						ResponseHeaderTimeout: timeout / 4,
-						DisableKeepAlives:     true,
-					}
-					client := &http.Client{
-						Timeout:   timeout / 4,
-						Transport: transport,
-						CheckRedirect: func(req *http.Request, via []*http.Request) error {
-							return http.ErrUseLastResponse
-						},
-					}
+					client := newFamilyHTTPClient(family, resolver, timeout/4)
 					req, err := http.NewRequestWithContext(ctx, "HEAD", addr, nil)
 					if err != nil {
 						return

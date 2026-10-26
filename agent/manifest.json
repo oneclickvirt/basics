@@ -1,0 +1,11 @@
+{
+  "repository": "oneclickvirt/basics",
+  "skill_name": "oneclickvirt-basics",
+  "mcp": true,
+  "files": {
+    "agent/profile.json": "af13da685b9535cb1dbfa695704bef80d6ea543786e03df36ee79e60ae531387",
+    "skills/oneclickvirt-basics/SKILL.md": "05c1cbe5cb9084c495ebabf82f58c8753a8f60551efaea9ac5905d7a76e5a512",
+    "skills/oneclickvirt-basics/SKILL_ZH.md": "e2523a6e7f9d3b091dab65083ca2b9b036dea6b0ea56b54c8372da760edc5176",
+    "agent/server.py": "d01416e6194095d90bf0d49ea29f7122969f0b74cf4d74ed0b1ce78753423a7d"
+  }
+}

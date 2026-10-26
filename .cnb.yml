@@ -1,13 +1,16 @@
 main:
-  push: &public-knowledge
-    - stages:
-        - name: Index public documentation
-          type: knowledge:update
-          options:
-            include:
-              - README.md
-              - skills/oneclickvirt-basics/SKILL.md
-              - skills/oneclickvirt-basics/SKILL_ZH.md
-            issueSyncEnabled: false
-            ignoreProcessFailures: false
-  api_trigger: *public-knowledge
+  push:
+  - &id001
+    name: index-public-documentation
+    stages:
+    - name: Index public documentation
+      type: knowledge:update
+      options:
+        include:
+        - README*.md
+        - skills/oneclickvirt-basics/SKILL.md
+        - skills/oneclickvirt-basics/SKILL_ZH.md
+        issueSyncEnabled: false
+        ignoreProcessFailures: false
+  api_trigger_knowledge:
+  - *id001

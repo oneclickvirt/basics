@@ -1,6 +1,6 @@
 {
   "schema_version": "goecs.resolver-endpoints/v1",
-  "generated_at": "2026-10-15T08:26:07Z",
+  "generated_at": "2026-11-02T11:26:01Z",
   "endpoints": [
     {
       "name": "AliDNS",
@@ -42,6 +42,7 @@
       "name": "360 Public DNS",
       "url": "https://doh.360.cn/dns-query",
       "addresses": [
+        "101.198.191.4",
         "101.198.192.33",
         "101.198.193.29",
         "101.199.254.118",
